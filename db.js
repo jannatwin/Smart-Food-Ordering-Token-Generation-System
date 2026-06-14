@@ -15,7 +15,7 @@ let useFallback = false;
 // Seed data to initialize fallback JSON database
 const defaultSeedData = {
   users: [
-    { id: 1, full_name: 'System Admin', email: 'admin@cafeteria.com', password: '$2a$10$k7Fj11rpC.qo29ipjg9TYO.WZc4grO3di4TNkBtq1ROPtquqGtWyi', role: 'admin', created_at: new Date().toISOString() },
+    { id: 1, full_name: 'System Admin', email: 'admin@cafeteria.com', password: '$2a$10$L6IYqTO1fFSMvZu6se5pK.BAhRRxgwxzrU2nmeeTh2S4rYiAkA3BC', role: 'admin', created_at: new Date().toISOString() },
     { id: 2, full_name: 'John Doe', email: 'customer@cafeteria.com', password: '$2a$10$k7Fj11rpC.qo29ipjg9TYOlcovwtbq9bVoj6ousXtCHpEyZtLkSv2', role: 'customer', created_at: new Date().toISOString() }
   ],
   categories: [

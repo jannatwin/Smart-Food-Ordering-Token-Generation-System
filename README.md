@@ -152,7 +152,7 @@ Visit **http://localhost:3000**
 
 | Role | Email | Password |
 |------|-------|----------|
-| Admin | `admin@cafeteria.com` | `admin123` |
+| Admin | `admin@cafeteria.com` | `Caf3Admin@2025!` |
 | Customer | `customer@cafeteria.com` | `customer123` |
 
 ---

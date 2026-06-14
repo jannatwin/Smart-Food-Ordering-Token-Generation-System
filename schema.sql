@@ -68,10 +68,10 @@ INSERT INTO `categories` (`id`, `category_name`) VALUES
 ON DUPLICATE KEY UPDATE `category_name`=VALUES(`category_name`);
 
 -- Seed Users (Bcrypt hashes with 10 salt rounds)
--- Password for admin@cafeteria.com: admin123
+-- Password for admin@cafeteria.com: Caf3Admin@2025!
 -- Password for customer@cafeteria.com: customer123
 INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`) VALUES
-(1, 'System Admin', 'admin@cafeteria.com', '$2a$10$k7Fj11rpC.qo29ipjg9TYO.WZc4grO3di4TNkBtq1ROPtquqGtWyi', 'admin'),
+(1, 'System Admin', 'admin@cafeteria.com', '$2a$10$L6IYqTO1fFSMvZu6se5pK.BAhRRxgwxzrU2nmeeTh2S4rYiAkA3BC', 'admin'),
 (2, 'John Doe', 'customer@cafeteria.com', '$2a$10$k7Fj11rpC.qo29ipjg9TYOlcovwtbq9bVoj6ousXtCHpEyZtLkSv2', 'customer')
 ON DUPLICATE KEY UPDATE `email`=VALUES(`email`);
 
