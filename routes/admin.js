@@ -20,10 +20,10 @@ router.get('/stats', async (req, res) => {
 
     const stats = statsResult[0] || {};
     return res.json({
-      total_orders: stats.total_orders || 0,
-      pending_orders: stats.pending_orders || 0,
-      ready_orders: stats.ready_orders || 0,
-      total_revenue: parseFloat(stats.total_revenue || 0)
+      total_orders:   parseInt(stats.total_orders  || 0),
+      pending_orders: parseInt(stats.pending_orders || 0),
+      ready_orders:   parseInt(stats.ready_orders   || 0),
+      total_revenue:  parseFloat(stats.total_revenue || 0)
     });
   } catch (error) {
     console.error('Error fetching admin stats:', error);
@@ -40,19 +40,24 @@ router.get('/stats', async (req, res) => {
 router.get('/orders', async (req, res) => {
   try {
     const [orders] = await db.query(
-      'SELECT o.*, u.full_name as customer_name, u.email as customer_email FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.order_time DESC'
+      `SELECT o.id, o.user_id, o.token_number, o.total_amount, o.status, o.order_time,
+              u.full_name as customer_name, u.email as customer_email
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       ORDER BY o.order_time DESC`
     );
 
     const ordersWithItems = [];
     for (const order of orders) {
       const [items] = await db.query(
-        'SELECT oi.*, f.name, f.price FROM order_items oi JOIN food_items f ON oi.food_id = f.id WHERE oi.order_id = ?',
+        `SELECT oi.id, oi.order_id, oi.food_id, oi.quantity, oi.subtotal,
+                f.name, f.price
+         FROM order_items oi
+         JOIN food_items f ON oi.food_id = f.id
+         WHERE oi.order_id = ?`,
         [order.id]
       );
-      ordersWithItems.push({
-        ...order,
-        items
-      });
+      ordersWithItems.push({ ...order, items });
     }
 
     return res.json(ordersWithItems);
@@ -99,7 +104,10 @@ router.put('/orders/:id/status', async (req, res) => {
 router.get('/foods', async (req, res) => {
   try {
     const [foods] = await db.query(
-      'SELECT f.*, c.category_name FROM food_items f LEFT JOIN categories c ON f.category_id = c.id'
+      `SELECT f.id, f.name, f.description, f.price, f.image, f.category_id, f.availability,
+              c.category_name
+       FROM food_items f
+       LEFT JOIN categories c ON f.category_id = c.id`
     );
     return res.json(foods);
   } catch (error) {
@@ -278,31 +286,26 @@ router.delete('/categories/:id', async (req, res) => {
 // @desc    Get sales history and reports
 router.get('/reports/sales', async (req, res) => {
   try {
-    // Get all orders completed or ready (revenue generated)
     const [orders] = await db.query(
-      'SELECT o.*, u.full_name as customer_name FROM orders o JOIN users u ON o.user_id = u.id ORDER BY o.order_time DESC'
+      `SELECT o.id, o.user_id, o.token_number, o.total_amount, o.status, o.order_time,
+              u.full_name as customer_name
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       ORDER BY o.order_time DESC`
     );
 
-    // Dynamic aggregations for reports
     const reportData = {
       total_sales: 0,
       total_orders_count: orders.length,
       completed_orders_count: 0,
-      cancelled_orders_count: 0, // In this system we don't have cancelled yet
-      status_distribution: {
-        Pending: 0,
-        Preparing: 0,
-        Ready: 0,
-        Completed: 0
-      },
+      cancelled_orders_count: 0,
+      status_distribution: { Pending: 0, Preparing: 0, Ready: 0, Completed: 0 },
       orders_list: orders
     };
 
     orders.forEach(order => {
       reportData.total_sales += parseFloat(order.total_amount);
-      if (order.status === 'Completed') {
-        reportData.completed_orders_count++;
-      }
+      if (order.status === 'Completed') reportData.completed_orders_count++;
       if (reportData.status_distribution[order.status] !== undefined) {
         reportData.status_distribution[order.status]++;
       }

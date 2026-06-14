@@ -115,13 +115,14 @@ router.get('/my-orders', isAuthenticated, async (req, res) => {
     const ordersWithItems = [];
     for (const order of orders) {
       const [items] = await db.query(
-        'SELECT oi.*, f.name, f.price, f.image FROM order_items oi JOIN food_items f ON oi.food_id = f.id WHERE oi.order_id = ?',
+        `SELECT oi.id, oi.order_id, oi.food_id, oi.quantity, oi.subtotal,
+                f.name, f.price, f.image
+         FROM order_items oi
+         JOIN food_items f ON oi.food_id = f.id
+         WHERE oi.order_id = ?`,
         [order.id]
       );
-      ordersWithItems.push({
-        ...order,
-        items
-      });
+      ordersWithItems.push({ ...order, items });
     }
 
     return res.json(ordersWithItems);
@@ -139,7 +140,11 @@ router.get('/track/:token', async (req, res) => {
   try {
     // Find order
     const [orders] = await db.query(
-      'SELECT o.*, u.full_name as customer_name FROM orders o JOIN users u ON o.user_id = u.id WHERE o.token_number = ?',
+      `SELECT o.id, o.user_id, o.token_number, o.total_amount, o.status, o.order_time,
+              u.full_name as customer_name
+       FROM orders o
+       JOIN users u ON o.user_id = u.id
+       WHERE o.token_number = ?`,
       [token]
     );
 
@@ -151,14 +156,15 @@ router.get('/track/:token', async (req, res) => {
 
     // Get order items
     const [items] = await db.query(
-      'SELECT oi.*, f.name, f.price, f.image FROM order_items oi JOIN food_items f ON oi.food_id = f.id WHERE oi.order_id = ?',
+      `SELECT oi.id, oi.order_id, oi.food_id, oi.quantity, oi.subtotal,
+              f.name, f.price, f.image
+       FROM order_items oi
+       JOIN food_items f ON oi.food_id = f.id
+       WHERE oi.order_id = ?`,
       [order.id]
     );
 
-    return res.json({
-      order,
-      items
-    });
+    return res.json({ order, items });
   } catch (error) {
     console.error('Error tracking order:', error);
     return res.status(500).json({ error: 'Server error tracking order.' });
