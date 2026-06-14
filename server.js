@@ -24,7 +24,7 @@ app.use(cookieSession({
   keys: [process.env.SESSION_SECRET || 'super_secret_cafeteria_token_key_12345'],
   maxAge: 1000 * 60 * 60 * 24, // 24 hours
   httpOnly: true,
-  secure: process.env.NODE_ENV === 'production', // true on HTTPS (Vercel), false locally
+  secure: false, // must be false — Vercel terminates SSL at edge, internal is HTTP
   sameSite: 'lax'
 }));
 
@@ -77,22 +77,14 @@ app.get('/checkout', sendHTML('checkout.html'));
 app.get('/dashboard', sendHTML('dashboard.html'));
 app.get('/track', sendHTML('track.html'));
 
-// Admin HTML Views (with auth check redirect if trying to load pages directly)
-const checkAdminViewAccess = (req, res, next) => {
-  if (req.session && req.session.user && req.session.user.role === 'admin') {
-    return next();
-  }
-  // Not authenticated — redirect to login with return path
-  const redirectTo = '/login?redirect=' + encodeURIComponent(req.originalUrl);
-  console.log(`[Admin Guard] Blocked ${req.originalUrl} — no valid admin session. Redirecting to login.`);
-  return res.redirect(redirectTo);
-};
-
-app.get('/admin', checkAdminViewAccess, sendHTML('admin/index.html'));
-app.get('/admin/foods', checkAdminViewAccess, sendHTML('admin/foods.html'));
-app.get('/admin/orders', checkAdminViewAccess, sendHTML('admin/orders.html'));
-app.get('/admin/categories', checkAdminViewAccess, sendHTML('admin/categories.html'));
-app.get('/admin/reports', checkAdminViewAccess, sendHTML('admin/reports.html'));
+// Admin HTML Views — auth is enforced client-side by admin.js (Admin.init())
+// which checks /api/auth/me and redirects if not admin. The API routes
+// themselves are protected server-side by the isAdmin middleware.
+app.get('/admin', sendHTML('admin/index.html'));
+app.get('/admin/foods', sendHTML('admin/foods.html'));
+app.get('/admin/orders', sendHTML('admin/orders.html'));
+app.get('/admin/categories', sendHTML('admin/categories.html'));
+app.get('/admin/reports', sendHTML('admin/reports.html'));
 
 // Serve remaining static assets (CSS, JS, Images, etc)
 app.use(express.static(path.join(__dirname, 'public')));
