@@ -1,5 +1,5 @@
 const express = require('express');
-const session = require('express-session');
+const cookieSession = require('cookie-session');
 const cors = require('cors');
 const path = require('path');
 require('dotenv').config();
@@ -17,19 +17,25 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session management setup
-app.use(session({
+// Session management — cookie-session stores data in a signed cookie,
+// so it works across all serverless instances (Vercel compatible)
+app.use(cookieSession({
   name: 'sid',
-  secret: process.env.SESSION_SECRET || 'super_secret_cafeteria_token_key_12345',
-  resave: true,
-  saveUninitialized: false,
-  cookie: {
-    maxAge: 1000 * 60 * 60 * 24, // 24 hours
-    httpOnly: true,
-    secure: false, // Set to true if running on HTTPS
-    sameSite: 'lax'
-  }
+  keys: [process.env.SESSION_SECRET || 'super_secret_cafeteria_token_key_12345'],
+  maxAge: 1000 * 60 * 60 * 24, // 24 hours
+  httpOnly: true,
+  secure: process.env.NODE_ENV === 'production', // true on HTTPS (Vercel), false locally
+  sameSite: 'lax'
 }));
+
+// cookie-session does not have a save() method — shim it so existing
+// route code that calls req.session.save(cb) does not crash
+app.use((req, res, next) => {
+  if (req.session && typeof req.session.save !== 'function') {
+    req.session.save = (cb) => { if (cb) cb(null); };
+  }
+  next();
+});
 
 // Debug request logger
 app.use((req, res, next) => {

@@ -92,8 +92,7 @@ router.post('/login', async (req, res) => {
     };
     req.session.user = loggedInUser;
 
-    // Explicitly save session before sending response to guarantee the cookie
-    // is persisted before the browser follows the redirect
+    // session.save shim handles cookie-session and express-session both
     req.session.save((saveErr) => {
       if (saveErr) {
         console.error('Session save error:', saveErr);
@@ -113,17 +112,8 @@ router.post('/login', async (req, res) => {
 // @route   POST /api/auth/logout
 // @desc    Logout user and clear session
 router.post('/logout', (req, res) => {
-  if (req.session) {
-    req.session.destroy(err => {
-      if (err) {
-        return res.status(500).json({ error: 'Failed to log out.' });
-      }
-      res.clearCookie('sid'); // Match express-session cookie name if custom, or default connect.sid
-      return res.json({ message: 'Logged out successfully.' });
-    });
-  } else {
-    return res.json({ message: 'No session active.' });
-  }
+  req.session = null; // cookie-session: nulling the session clears the cookie
+  return res.json({ message: 'Logged out successfully.' });
 });
 
 // @route   GET /api/auth/me
