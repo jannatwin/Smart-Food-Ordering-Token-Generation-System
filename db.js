@@ -1,9 +1,13 @@
 const mysql = require('mysql2/promise');
 const fs = require('fs');
 const path = require('path');
+const os = require('os');
 require('dotenv').config();
 
-const FALLBACK_FILE = path.join(__dirname, 'db_fallback.json');
+const FALLBACK_FILE = process.env.DB_FALLBACK_FILE || (
+  process.env.VERCEL ? path.join(os.tmpdir(), 'smart-food-ordering-db.json') : path.join(__dirname, 'db_fallback.json')
+);
+const SEED_FILE = path.join(__dirname, 'db_fallback.json');
 
 let pool = null;
 let useFallback = false;
@@ -40,7 +44,15 @@ const defaultSeedData = {
 // Initialize local database if it doesn't exist
 function initFallbackDB() {
   if (!fs.existsSync(FALLBACK_FILE)) {
-    fs.writeFileSync(FALLBACK_FILE, JSON.stringify(defaultSeedData, null, 2), 'utf8');
+    let seedData = defaultSeedData;
+    if (FALLBACK_FILE !== SEED_FILE && fs.existsSync(SEED_FILE)) {
+      try {
+        seedData = JSON.parse(fs.readFileSync(SEED_FILE, 'utf8'));
+      } catch (error) {
+        console.warn('[Fallback DB] Could not read seed file, using built-in seed data:', error.message);
+      }
+    }
+    fs.writeFileSync(FALLBACK_FILE, JSON.stringify(seedData, null, 2), 'utf8');
     console.log('[Fallback DB] Initialized fallback JSON database at:', FALLBACK_FILE);
   }
 }
@@ -246,7 +258,16 @@ function runFallbackQuery(sql, params = []) {
     return [{ insertId: newId }];
   }
 
-  // 14. SELECT * FROM orders WHERE user_id = ?
+  // 14. SELECT token_number FROM orders ORDER BY id DESC LIMIT 1
+  if (normalizedSql.match(/select token_number from orders order by id desc limit 1/i)) {
+    const rows = [...data.orders]
+      .sort((a, b) => Number(b.id) - Number(a.id))
+      .slice(0, 1)
+      .map(order => ({ token_number: order.token_number }));
+    return [rows];
+  }
+
+  // 15. SELECT * FROM orders WHERE user_id = ?
   if (normalizedSql.match(/select \* from orders where user_id\s*=\s*\?/i)) {
     const userId = params[0];
     const rows = data.orders
@@ -255,14 +276,29 @@ function runFallbackQuery(sql, params = []) {
     return [rows];
   }
 
-  // 15. SELECT * FROM orders WHERE token_number = ?
+  // 16. SELECT * FROM orders WHERE token_number = ?
   if (normalizedSql.match(/select \* from orders where token_number\s*=\s*\?/i)) {
     const token = params[0];
     const rows = data.orders.filter(o => o.token_number.toLowerCase() === token.toLowerCase());
     return [rows];
   }
 
-  // 16. SELECT * FROM orders ORDER BY order_time
+  // 17. SELECT o.*, u.full_name as customer_name ... WHERE o.token_number = ?
+  if (normalizedSql.match(/select o\.\*, u\.full_name as customer_name from orders o join users u on o\.user_id = u\.id where o\.token_number\s*=\s*\?/i)) {
+    const token = String(params[0] || '').toLowerCase();
+    const rows = data.orders
+      .filter(o => String(o.token_number).toLowerCase() === token)
+      .map(o => {
+        const user = data.users.find(u => u.id == o.user_id);
+        return {
+          ...o,
+          customer_name: user ? user.full_name : 'Unknown Customer'
+        };
+      });
+    return [rows];
+  }
+
+  // 18. SELECT * FROM orders ORDER BY order_time / admin order joins
   if (normalizedSql.match(/select \* from orders order by/i) || normalizedSql.match(/select o\.\*.*from orders o/i)) {
     // Join customer details
     const rows = data.orders.map(o => {
@@ -270,13 +306,15 @@ function runFallbackQuery(sql, params = []) {
       return {
         ...o,
         full_name: user ? user.full_name : 'Unknown Customer',
-        email: user ? user.email : ''
+        email: user ? user.email : '',
+        customer_name: user ? user.full_name : 'Unknown Customer',
+        customer_email: user ? user.email : ''
       };
     }).sort((a, b) => new Date(b.order_time) - new Date(a.order_time));
     return [rows];
   }
 
-  // 17. SELECT * FROM order_items WHERE order_id = ?
+  // 19. SELECT * FROM order_items WHERE order_id = ?
   if (normalizedSql.match(/select oi\.\*.*from order_items oi/i) || normalizedSql.match(/select \* from order_items/i)) {
     const orderId = params[0];
     const items = data.order_items.filter(oi => oi.order_id == orderId);
@@ -292,7 +330,7 @@ function runFallbackQuery(sql, params = []) {
     return [rows];
   }
 
-  // 18. UPDATE orders SET status = ? WHERE id = ?
+  // 20. UPDATE orders SET status = ? WHERE id = ?
   if (normalizedSql.match(/update orders set status\s*=\s*\?\s*where id\s*=\s*\?/i)) {
     const [status, id] = params;
     const order = data.orders.find(o => o.id == id);
@@ -301,7 +339,7 @@ function runFallbackQuery(sql, params = []) {
     return [{ affectedRows: order ? 1 : 0 }];
   }
 
-  // 19. SELECT COUNT(*) as total... stats query
+  // 21. SELECT COUNT(*) as total... stats query
   if (normalizedSql.match(/select count\(\*\) as/i) || normalizedSql.match(/sum\(total_amount\)/i)) {
     const totalOrders = data.orders.length;
     const pendingOrders = data.orders.filter(o => o.status === 'Pending').length;

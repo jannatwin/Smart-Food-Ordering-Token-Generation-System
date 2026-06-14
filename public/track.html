@@ -20,7 +20,7 @@
     <!-- Search Bar -->
     <div style="max-width: 500px; margin: 0 auto 3rem; display: flex; gap: 0.75rem;">
       <input type="text" id="track-token-input" class="form-control" placeholder="Enter Token Number (e.g. T001)" style="font-weight: 700; text-transform: uppercase;">
-      <button class="btn btn-primary" onclick="searchToken()"><i class="fas fa-search"></i> Search</button>
+      <button class="btn btn-primary" id="track-search-btn" onclick="searchToken()"><i class="fas fa-search"></i> Search</button>
     </div>
 
     <div id="tracking-display-container">
@@ -43,25 +43,37 @@
     let currentToken = '';
 
     document.addEventListener('DOMContentLoaded', () => {
+      document.getElementById('track-token-input').addEventListener('keydown', (event) => {
+        if (event.key === 'Enter') {
+          event.preventDefault();
+          searchToken();
+        }
+      });
+
       // Check if URL has token parameters (e.g. ?token=T001)
       const urlParams = new URLSearchParams(window.location.search);
       const token = urlParams.get('token');
       if (token) {
-        document.getElementById('track-token-input').value = token;
-        currentToken = token.trim();
+        currentToken = normalizeToken(token);
+        document.getElementById('track-token-input').value = currentToken;
         loadTrackingInfo();
         startPolling();
       }
     });
 
+    function normalizeToken(token) {
+      return String(token || '').trim().toUpperCase();
+    }
+
     function searchToken() {
-      const inputVal = document.getElementById('track-token-input').value.trim();
+      const inputVal = normalizeToken(document.getElementById('track-token-input').value);
       if (!inputVal) {
         alert('Please enter a valid token number.');
         return;
       }
       
       currentToken = inputVal;
+      document.getElementById('track-token-input').value = currentToken;
       // Update browser URL query string without reloading page
       const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?token=' + encodeURIComponent(currentToken);
       window.history.pushState({ path: newUrl }, '', newUrl);
@@ -72,38 +84,28 @@
 
     async function loadTrackingInfo() {
       const display = document.getElementById('tracking-display-container');
+      const searchBtn = document.getElementById('track-search-btn');
       
       try {
+        if (searchBtn) {
+          searchBtn.disabled = true;
+          searchBtn.innerHTML = '<i class="fas fa-spinner fa-spin"></i> Checking';
+        }
+
         const details = await API.trackOrder(currentToken);
         const order = details.order;
         const items = details.items;
 
         // Calculate steps visual state
-        let progressWidth = '0%';
-        let step1Class = 'active';
-        let step2Class = '';
-        let step3Class = '';
-        let step4Class = '';
-
-        if (order.status === 'Pending') {
-          progressWidth = '0%';
-          step1Class = 'active';
-        } else if (order.status === 'Preparing') {
-          progressWidth = '33.3%';
-          step1Class = 'completed';
-          step2Class = 'active';
-        } else if (order.status === 'Ready') {
-          progressWidth = '66.6%';
-          step1Class = 'completed';
-          step2Class = 'completed';
-          step3Class = 'active';
-        } else if (order.status === 'Completed') {
-          progressWidth = '100%';
-          step1Class = 'completed';
-          step2Class = 'completed';
-          step3Class = 'completed';
-          step4Class = 'completed';
-        }
+        const statusOrder = ['Pending', 'Preparing', 'Ready', 'Completed'];
+        const currentIndex = Math.max(0, statusOrder.indexOf(order.status));
+        const progressWidth = `${(currentIndex / (statusOrder.length - 1)) * 100}%`;
+        const stepClasses = statusOrder.map((_, index) => {
+          if (order.status === 'Completed') return 'completed';
+          if (index < currentIndex) return 'completed';
+          if (index === currentIndex) return 'active';
+          return '';
+        });
 
         // Build items HTML list
         let itemsHtml = '';
@@ -140,22 +142,22 @@
               <div class="track-progress">
                 <div class="progress-bar-fill" style="width: ${progressWidth};"></div>
                 
-                <div class="track-step ${step1Class}">
-                  <div class="step-node"><i class="fas fa-check"></i></div>
+                <div class="track-step ${stepClasses[0]}">
+                  <div class="step-node"><i class="fas fa-clock"></i></div>
                   <span class="step-label">Pending</span>
                 </div>
                 
-                <div class="track-step ${step2Class}">
+                <div class="track-step ${stepClasses[1]}">
                   <div class="step-node">${order.status === 'Preparing' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-fire-burner"></i>'}</div>
                   <span class="step-label">Preparing</span>
                 </div>
                 
-                <div class="track-step ${step3Class}">
+                <div class="track-step ${stepClasses[2]}">
                   <div class="step-node">${order.status === 'Ready' ? '<i class="fas fa-bell fa-bounce" style="color: var(--warning);"></i>' : '<i class="fas fa-utensils"></i>'}</div>
                   <span class="step-label">Ready</span>
                 </div>
                 
-                <div class="track-step ${step4Class}">
+                <div class="track-step ${stepClasses[3]}">
                   <div class="step-node"><i class="fas fa-check-double"></i></div>
                   <span class="step-label">Completed</span>
                 </div>
@@ -182,7 +184,7 @@
             </div>
             
             <p style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem;">
-              <i class="fas fa-sync fa-spin"></i> Live auto-checking status every 10 seconds...
+              <i class="fas fa-sync fa-spin"></i> Live auto-checking status every 10 seconds. Last checked: ${new Date().toLocaleTimeString()}
             </p>
           </div>
         `;
@@ -197,6 +199,11 @@
             <p style="color: var(--text-muted);">${error.message}</p>
           </div>
         `;
+      } finally {
+        if (searchBtn) {
+          searchBtn.disabled = false;
+          searchBtn.innerHTML = '<i class="fas fa-search"></i> Search';
+        }
       }
     }
 

@@ -139,7 +139,10 @@ const App = {
             Smart<span>Food</span>
           </a>
         </div>
-        <nav>
+        <button class="mobile-menu-toggle" id="mobile-menu-toggle" type="button" aria-label="Open menu" aria-expanded="false">
+          <i class="fas fa-bars"></i>
+        </button>
+        <nav id="main-nav">
           <ul class="nav-menu">
             ${navLinks}
           </ul>
@@ -161,6 +164,16 @@ const App = {
         } catch (e) {
           alert('Failed to log out. Please try again.');
         }
+      });
+    }
+
+    const menuToggle = document.getElementById('mobile-menu-toggle');
+    const mainNav = document.getElementById('main-nav');
+    if (menuToggle && mainNav) {
+      menuToggle.addEventListener('click', () => {
+        const isOpen = headerEl.classList.toggle('nav-open');
+        menuToggle.setAttribute('aria-expanded', String(isOpen));
+        menuToggle.innerHTML = isOpen ? '<i class="fas fa-times"></i>' : '<i class="fas fa-bars"></i>';
       });
     }
   },

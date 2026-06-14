@@ -93,9 +93,13 @@ app.use((req, res) => {
   res.status(404).sendFile(path.join(__dirname, 'public', 'index.html')); // Fallback to landing page or we could make a custom 404
 });
 
-// Launch server
-app.listen(PORT, () => {
-  console.log(`\n================================================================`);
-  console.log(`[SERVER] Smart Food Ordering System running on: http://localhost:${PORT}`);
-  console.log(`================================================================\n`);
-});
+// Launch locally, but export the app for serverless hosts such as Vercel.
+if (require.main === module) {
+  app.listen(PORT, () => {
+    console.log(`\n================================================================`);
+    console.log(`[SERVER] Smart Food Ordering System running on: http://localhost:${PORT}`);
+    console.log(`================================================================\n`);
+  });
+}
+
+module.exports = app;

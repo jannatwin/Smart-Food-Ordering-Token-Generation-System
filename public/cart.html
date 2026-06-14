@@ -56,6 +56,7 @@
       }
 
       let rowsHtml = '';
+      let mobileCardsHtml = '';
       items.forEach(item => {
         const itemSub = parseFloat(item.price) * item.quantity;
         const imgSrc = item.image || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=100&q=80';
@@ -85,6 +86,28 @@
             </td>
           </tr>
         `;
+
+        mobileCardsHtml += `
+          <div class="cart-mobile-card">
+            <div class="cart-mobile-main">
+              <img class="cart-item-img" src="${imgSrc}" alt="${item.name}">
+              <div>
+                <div class="cart-item-name">${item.name}</div>
+                <div class="cart-item-category">${item.category_name}</div>
+                <div class="cart-mobile-price">৳${parseFloat(item.price).toFixed(2)} each</div>
+              </div>
+            </div>
+            <div class="cart-mobile-actions">
+              <div class="qty-control">
+                <button class="qty-btn" onclick="updateQty(${item.id}, ${item.quantity - 1})"><i class="fas fa-minus"></i></button>
+                <span class="qty-val">${item.quantity}</span>
+                <button class="qty-btn" onclick="updateQty(${item.id}, ${item.quantity + 1})"><i class="fas fa-plus"></i></button>
+              </div>
+              <strong>৳${itemSub.toFixed(2)}</strong>
+              <button class="remove-btn" onclick="removeItem(${item.id})" title="Remove item"><i class="fas fa-trash"></i></button>
+            </div>
+          </div>
+        `;
       });
 
       const subtotal = Cart.total();
@@ -110,6 +133,10 @@
                   ${rowsHtml}
                 </tbody>
               </table>
+            </div>
+
+            <div class="cart-mobile-list">
+              ${mobileCardsHtml}
             </div>
             
             <div style="display: flex; justify-content: space-between; margin-top: 1.5rem;">
