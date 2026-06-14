@@ -1,0 +1,351 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Checkout | Smart Food Ordering System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <main class="container">
+    <div class="section-header">
+      <h2>Complete Your Order</h2>
+      <p>Provide delivery details and choose your payment method.</p>
+    </div>
+
+    <div id="checkout-container">
+      <div class="checkout-wrapper">
+        <!-- Billing Details Form -->
+        <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 2.5rem; box-shadow: var(--card-shadow);">
+          <h3 style="font-size: 1.3rem; margin-bottom: 1.5rem; font-weight: 700;">Billing & Dine-In Details</h3>
+          
+          <div id="checkout-err"></div>
+
+          <form id="checkout-form">
+            <div class="form-group">
+              <label for="customer-name">Full Name</label>
+              <input type="text" id="customer-name" class="form-control" readonly>
+            </div>
+            
+            <div class="form-group">
+              <label for="table-number">Table / Seat Number (Or Canteen Pick-Up)</label>
+              <input type="text" id="table-number" class="form-control" placeholder="e.g. Table 12, or Pick-Up Counter" required>
+            </div>
+
+            <div class="form-group" style="margin-bottom: 2rem;">
+              <label for="special-notes">Special Instructions (Optional)</label>
+              <textarea id="special-notes" class="form-control" rows="3" placeholder="e.g. Extra spicy, no mustard, warm drinks, etc."></textarea>
+            </div>
+
+            <h3 style="font-size: 1.3rem; margin-bottom: 1rem; font-weight: 700;">Select Payment Method</h3>
+            <div class="payment-options">
+              <div class="payment-method selected" data-method="Cash">
+                <i class="fas fa-money-bill-wave"></i>
+                <span>Cash on Counter</span>
+              </div>
+              <div class="payment-method" data-method="bKash">
+                <i class="fas fa-mobile-screen-button"></i>
+                <span>bKash</span>
+              </div>
+              <div class="payment-method" data-method="Nagad">
+                <i class="fas fa-wallet"></i>
+                <span>Nagad</span>
+              </div>
+              <div class="payment-method" data-method="Card">
+                <i class="fas fa-credit-card"></i>
+                <span>Debit/Credit Card</span>
+              </div>
+            </div>
+            
+            <button type="submit" class="btn btn-primary btn-lg" style="width: 100%; margin-top: 2.5rem;" id="submit-order-btn">
+              Place Order & Generate Token
+            </button>
+          </form>
+        </div>
+
+        <!-- Order Total Summary Sidebar -->
+        <div class="summary-card" id="checkout-summary-sidebar">
+          <h3>Order Details</h3>
+          <div id="checkout-items-list" style="margin-bottom: 1.5rem;">
+            <!-- Dynamic checkout items -->
+          </div>
+          <div class="summary-row">
+            <span>Subtotal</span>
+            <span id="subtotal-val">৳0.00</span>
+          </div>
+          <div class="summary-row">
+            <span>VAT (5%)</span>
+            <span id="vat-val">৳0.00</span>
+          </div>
+          <div class="summary-row total">
+            <span>Grand Total</span>
+            <span id="total-val">৳0.00</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <!-- MOCK PAYMENT MODAL -->
+  <div class="modal" id="payment-modal">
+    <div class="modal-content" style="max-width: 420px; padding: 2rem; border-radius: 16px;">
+      <div class="modal-header" style="border-bottom: 1px solid var(--border-color); padding-bottom: 1rem; margin-bottom: 1rem;">
+        <h3 id="modal-gateway-title" style="font-weight: 700;">Online Payment</h3>
+        <button class="modal-close" onclick="closePaymentModal()">&times;</button>
+      </div>
+
+      <div class="payment-modal-body">
+        <div id="gateway-logo-container"></div>
+        <div class="payment-instruction">Enter your mobile number to authorize the transaction.</div>
+        
+        <div id="gateway-form-container">
+          <form id="gateway-auth-form" onsubmit="handleGatewayAuth(event)">
+            <div class="form-group" style="text-align: left;">
+              <label for="gateway-input" id="gateway-input-label">Account Number</label>
+              <input type="text" id="gateway-input" class="form-control" required placeholder="017XXXXXXXX">
+            </div>
+            <div class="form-group" style="text-align: left; display: none;" id="otp-group">
+              <label for="gateway-otp">Enter 6-Digit OTP</label>
+              <input type="text" id="gateway-otp" class="form-control" placeholder="123456" maxlength="6">
+            </div>
+            <div class="form-group" style="text-align: left; display: none;" id="pin-group">
+              <label for="gateway-pin">Enter PIN Code</label>
+              <input type="password" id="gateway-pin" class="form-control" placeholder="••••" maxlength="5">
+            </div>
+            <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;" id="gateway-submit-btn">
+              Proceed
+            </button>
+          </form>
+        </div>
+        
+        <!-- Payment processing spinner -->
+        <div id="gateway-loading" style="display: none; padding: 2rem;">
+          <i class="fas fa-spinner fa-spin" style="font-size: 3rem; color: var(--primary); margin-bottom: 1.5rem;"></i>
+          <h4 style="font-size: 1.1rem; font-weight: 600;">Processing secure payment...</h4>
+          <p style="color: var(--text-muted); font-size: 0.85rem; margin-top: 0.5rem;">Do not refresh the page or click back.</p>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <footer id="main-footer"></footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+
+  <script>
+    let selectedPayment = 'Cash';
+    let mockTxnId = '';
+    let gatewayStep = 1; // 1: Acc info, 2: OTP, 3: PIN
+
+    document.addEventListener('DOMContentLoaded', async () => {
+      // Check if cart is empty, if so send to menu
+      if (Cart.get().length === 0) {
+        window.location.href = '/menu';
+        return;
+      }
+
+      // Populate customer name
+      const user = await API.getCurrentUser();
+      if (user) {
+        document.getElementById('customer-name').value = user.full_name;
+      } else {
+        // Double check auth protection
+        window.location.href = '/login?redirect=' + encodeURIComponent('/checkout');
+        return;
+      }
+
+      renderCheckoutSummary();
+      setupPaymentSelector();
+
+      // Submit checkout form handler
+      document.getElementById('checkout-form').addEventListener('submit', (e) => {
+        e.preventDefault();
+        
+        if (selectedPayment === 'Cash') {
+          // Cash order - submit directly
+          submitFinalOrder();
+        } else {
+          // Online payment - trigger mock gateway popup
+          openPaymentModal();
+        }
+      });
+    });
+
+    function renderCheckoutSummary() {
+      const items = Cart.get();
+      const listContainer = document.getElementById('checkout-items-list');
+      
+      let html = '';
+      items.forEach(item => {
+        html += `
+          <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 0.75rem; font-size: 0.9rem;">
+            <span style="color: var(--text-muted);">${item.name} <strong style="color: var(--text-main);">x ${item.quantity}</strong></span>
+            <span>৳${(item.price * item.quantity).toFixed(2)}</span>
+          </div>
+        `;
+      });
+      listContainer.innerHTML = html;
+
+      const subtotal = Cart.total();
+      const vat = subtotal * 0.05;
+      const total = subtotal + vat;
+
+      document.getElementById('subtotal-val').textContent = `৳${subtotal.toFixed(2)}`;
+      document.getElementById('vat-val').textContent = `৳${vat.toFixed(2)}`;
+      document.getElementById('total-val').textContent = `৳${total.toFixed(2)}`;
+    }
+
+    function setupPaymentSelector() {
+      const options = document.querySelectorAll('.payment-method');
+      options.forEach(opt => {
+        opt.addEventListener('click', () => {
+          options.forEach(o => o.classList.remove('selected'));
+          opt.classList.add('selected');
+          selectedPayment = opt.getAttribute('data-method');
+          
+          const btn = document.getElementById('submit-order-btn');
+          if (selectedPayment === 'Cash') {
+            btn.textContent = 'Place Order & Generate Token';
+          } else {
+            btn.textContent = `Pay with ${selectedPayment} & Generate Token`;
+          }
+        });
+      });
+    }
+
+    // =========================================================================
+    // MOCK GATEWAY SIMULATOR
+    // =========================================================================
+    function openPaymentModal() {
+      const modal = document.getElementById('payment-modal');
+      const title = document.getElementById('modal-gateway-title');
+      const logoContainer = document.getElementById('gateway-logo-container');
+      const inputLabel = document.getElementById('gateway-input-label');
+      const input = document.getElementById('gateway-input');
+
+      // Reset Form State
+      gatewayStep = 1;
+      document.getElementById('otp-group').style.display = 'none';
+      document.getElementById('pin-group').style.display = 'none';
+      document.getElementById('gateway-input').style.display = 'block';
+      document.getElementById('gateway-auth-form').style.display = 'block';
+      document.getElementById('gateway-loading').style.display = 'none';
+      document.getElementById('gateway-submit-btn').textContent = 'Proceed';
+      input.value = '';
+
+      if (selectedPayment === 'bKash') {
+        title.textContent = 'bKash Checkout';
+        logoContainer.innerHTML = `<div class="payment-gateway-logo bkash"><i class="fas fa-mobile-screen"></i> bKash Payment</div>`;
+        inputLabel.textContent = 'bKash Mobile Number';
+        input.placeholder = 'e.g. 017XXXXXXXX';
+      } else if (selectedPayment === 'Nagad') {
+        title.textContent = 'Nagad Checkout';
+        logoContainer.innerHTML = `<div class="payment-gateway-logo nagad"><i class="fas fa-wallet"></i> Nagad Pay</div>`;
+        inputLabel.textContent = 'Nagad Mobile Number';
+        input.placeholder = 'e.g. 018XXXXXXXX';
+      } else {
+        title.textContent = 'Card Checkout';
+        logoContainer.innerHTML = `<div class="payment-gateway-logo card"><i class="fas fa-credit-card"></i> Online Banking</div>`;
+        inputLabel.textContent = '16-Digit Card Number';
+        input.placeholder = 'e.g. 4000 1234 5678 9010';
+      }
+
+      modal.classList.add('open');
+    }
+
+    function closePaymentModal() {
+      document.getElementById('payment-modal').classList.remove('open');
+    }
+
+    function handleGatewayAuth(event) {
+      event.preventDefault();
+      
+      const input = document.getElementById('gateway-input');
+      const otpGroup = document.getElementById('otp-group');
+      const pinGroup = document.getElementById('pin-group');
+      const submitBtn = document.getElementById('gateway-submit-btn');
+
+      if (gatewayStep === 1) {
+        // Step 1 done (Entered Phone / Card) -> Trigger OTP Simulation
+        gatewayStep = 2;
+        input.style.display = 'none';
+        otpGroup.style.display = 'block';
+        submitBtn.textContent = 'Confirm OTP';
+        document.querySelector('.payment-instruction').textContent = 'A simulated 6-Digit OTP verification code was sent to your account.';
+      } else if (gatewayStep === 2) {
+        // Step 2 done (Entered OTP) -> Trigger PIN Simulation
+        gatewayStep = 3;
+        otpGroup.style.display = 'none';
+        pinGroup.style.display = 'block';
+        submitBtn.textContent = 'Pay Now';
+        document.querySelector('.payment-instruction').textContent = 'Enter your private transaction secure PIN.';
+      } else if (gatewayStep === 3) {
+        // Step 3 done (Entered PIN) -> Run Processing Animation
+        document.getElementById('gateway-auth-form').style.display = 'none';
+        document.querySelector('.payment-instruction').style.display = 'none';
+        document.getElementById('gateway-loading').style.display = 'block';
+        
+        // Mock loading completion after 1.8 seconds
+        setTimeout(() => {
+          mockTxnId = 'TXN' + Math.floor(Math.random() * 100000000);
+          closePaymentModal();
+          submitFinalOrder(mockTxnId);
+        }, 1800);
+      }
+    }
+
+    // Place the final API Order
+    async function submitFinalOrder(transactionId = '') {
+      const errBox = document.getElementById('checkout-err');
+      const cart = Cart.get();
+      const btn = document.getElementById('submit-order-btn');
+      
+      btn.disabled = true;
+      btn.innerHTML = `<i class="fas fa-spinner fa-spin"></i> Generating Token...`;
+
+      try {
+        const orderResult = await API.placeOrder(cart, selectedPayment, transactionId);
+        
+        // Success order placement -> Clean Cart
+        Cart.clear();
+
+        // Display Token receipt popup page directly
+        displayConfirmation(orderResult.tokenNumber, orderResult.totalAmount);
+      } catch (error) {
+        errBox.innerHTML = `<div class="alert alert-danger"><i class="fas fa-times-circle"></i> ${error.message}</div>`;
+        btn.disabled = false;
+        btn.textContent = 'Place Order & Generate Token';
+      }
+    }
+
+    function displayConfirmation(token, amount) {
+      const container = document.getElementById('checkout-container');
+      
+      container.innerHTML = `
+        <div class="token-card">
+          <div class="success-icon"><i class="fas fa-check"></i></div>
+          <h2 style="font-size: 1.8rem; font-weight: 700;">Order Placed Successfully!</h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem; margin-top: 0.5rem;">Your food is being processed. Present this token number at the cafeteria counter to collect your order.</p>
+          
+          <div class="token-number">${token}</div>
+          
+          <div style="background-color: var(--bg-primary); border: 1px solid var(--border-color); padding: 1.25rem; border-radius: 8px; margin-bottom: 2rem; display: flex; justify-content: space-between; font-weight: 600;">
+            <span style="color: var(--text-muted);">Total Paid:</span>
+            <span style="color: var(--primary);">৳${parseFloat(amount).toFixed(2)}</span>
+          </div>
+
+          <div style="display: flex; gap: 1rem; justify-content: center;">
+            <a href="/track?token=${token}" class="btn btn-primary"><i class="fas fa-clock"></i> Track Live Status</a>
+            <a href="/menu" class="btn btn-secondary"><i class="fas fa-utensils"></i> Order More Food</a>
+          </div>
+        </div>
+      `;
+    }
+  </script>
+</body>
+</html>

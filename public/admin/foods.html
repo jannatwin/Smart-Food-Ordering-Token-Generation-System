@@ -1,0 +1,251 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Manage Food Items | Admin Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <div class="admin-container">
+    <aside class="admin-sidebar" id="admin-sidebar"></aside>
+
+    <main class="admin-content">
+      <div class="panel">
+        <div class="panel-header">
+          <div>
+            <h2 class="panel-title" style="font-size: 1.6rem;"><i class="fas fa-hamburger"></i> Menu Items Directory</h2>
+            <p style="color: var(--text-muted); font-size: 0.9rem; margin-top: 0.25rem;">Create, update, delete or mark availability of foods.</p>
+          </div>
+          <button class="btn btn-primary btn-sm" onclick="openFoodModal()"><i class="fas fa-plus"></i> Add New Food Item</button>
+        </div>
+
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Image</th>
+                <th>Name</th>
+                <th>Category</th>
+                <th>Price</th>
+                <th>Availability</th>
+                <th>Actions</th>
+              </tr>
+            </thead>
+            <tbody id="foods-table-body">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                  <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i> Loading foods list...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <!-- ADD / EDIT FOOD MODAL -->
+  <div class="modal" id="food-modal">
+    <div class="modal-content">
+      <div class="modal-header">
+        <h3 id="modal-title" style="font-weight: 700;">Add Food Item</h3>
+        <button class="modal-close" onclick="closeFoodModal()">&times;</button>
+      </div>
+      <form id="food-form" onsubmit="handleFoodFormSubmit(event)">
+        <input type="hidden" id="food-id">
+        
+        <div class="form-group">
+          <label for="food-name">Food Name</label>
+          <input type="text" id="food-name" class="form-control" required placeholder="e.g. Beef Cheeseburger">
+        </div>
+
+        <div style="display: grid; grid-template-columns: 1fr 1fr; gap: 1rem;">
+          <div class="form-group">
+            <label for="food-category">Category</label>
+            <select id="food-category" class="form-control" required>
+              <option value="">Select Category</option>
+            </select>
+          </div>
+          <div class="form-group">
+            <label for="food-price">Price (৳)</label>
+            <input type="number" id="food-price" class="form-control" required step="0.01" min="0" placeholder="150.00">
+          </div>
+        </div>
+
+        <div class="form-group">
+          <label for="food-description">Description</label>
+          <textarea id="food-description" class="form-control" rows="3" placeholder="Describe ingredients, tastes or preparation options..."></textarea>
+        </div>
+
+        <div class="form-group">
+          <label for="food-image">Image URL</label>
+          <input type="url" id="food-image" class="form-control" placeholder="https://images.unsplash.com/photo-...">
+        </div>
+
+        <div class="form-group" style="margin-top: 1.5rem;">
+          <label class="form-check">
+            <input type="checkbox" id="food-availability" checked>
+            <span>Available (Display in Client Menu)</span>
+          </label>
+        </div>
+
+        <button type="submit" class="btn btn-primary" style="width: 100%; margin-top: 1.5rem;"><i class="fas fa-save"></i> Save Food Item</button>
+      </form>
+    </div>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/admin/admin.js"></script>
+
+  <script>
+    let categoriesList = [];
+
+    async function onAdminPageLoad() {
+      await loadCategoriesDropdown();
+      loadFoodsList();
+    }
+
+    async function loadCategoriesDropdown() {
+      const select = document.getElementById('food-category');
+      try {
+        categoriesList = await API.getAdminCategories();
+        select.innerHTML = '<option value="">Select Category</option>';
+        
+        categoriesList.forEach(cat => {
+          const opt = document.createElement('option');
+          opt.value = cat.id;
+          opt.textContent = cat.category_name;
+          select.appendChild(opt);
+        });
+      } catch (error) {
+        console.error('Failed to load categories into select:', error);
+      }
+    }
+
+    async function loadFoodsList() {
+      const tbody = document.getElementById('foods-table-body');
+      try {
+        const foods = await API.getAdminFoods();
+        tbody.innerHTML = '';
+
+        if (foods.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                No menu items created yet. Add your first item.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        foods.forEach(food => {
+          const imgUrl = food.image || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=80&q=80';
+          const activeBadge = food.availability 
+            ? `<span class="status-badge status-completed" style="font-size: 0.7rem;">In Stock</span>` 
+            : `<span class="status-badge status-pending" style="font-size: 0.7rem; color: var(--danger); border-color: var(--danger); background: var(--danger-bg);">Out of Stock</span>`;
+
+          const row = document.createElement('tr');
+          row.innerHTML = `
+            <td><img src="${imgUrl}" style="width: 45px; height: 45px; object-fit: cover; border-radius: 6px; border: 1px solid var(--border-color);" alt="${food.name}"></td>
+            <td style="font-weight: 600;">${food.name}</td>
+            <td>${food.category_name || 'Uncategorized'}</td>
+            <td style="font-weight: 700; color: var(--primary);">৳${parseFloat(food.price).toFixed(2)}</td>
+            <td>${activeBadge}</td>
+            <td>
+              <div class="actions-cell">
+                <button class="btn btn-secondary btn-sm" onclick='openEditModal(${JSON.stringify(food).replace(/'/g, "&apos;")})' title="Edit Food"><i class="fas fa-edit"></i></button>
+                <button class="btn btn-danger btn-sm" onclick="deleteFood(${food.id})" title="Delete Food"><i class="fas fa-trash"></i></button>
+              </div>
+            </td>
+          `;
+
+          tbody.appendChild(row);
+        });
+
+      } catch (error) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--danger); padding: 2rem;">
+              Error retrieving food items list.
+            </td>
+          </tr>
+        `;
+      }
+    }
+
+    function openFoodModal() {
+      const modal = document.getElementById('food-modal');
+      document.getElementById('modal-title').textContent = 'Add Food Item';
+      document.getElementById('food-id').value = '';
+      document.getElementById('food-form').reset();
+      document.getElementById('food-availability').checked = true;
+      modal.classList.add('open');
+    }
+
+    function openEditModal(food) {
+      const modal = document.getElementById('food-modal');
+      document.getElementById('modal-title').textContent = 'Edit Food Item';
+      
+      document.getElementById('food-id').value = food.id;
+      document.getElementById('food-name').value = food.name;
+      document.getElementById('food-category').value = food.category_id || '';
+      document.getElementById('food-price').value = food.price;
+      document.getElementById('food-description').value = food.description || '';
+      document.getElementById('food-image').value = food.image || '';
+      document.getElementById('food-availability').checked = !!food.availability;
+      
+      modal.classList.add('open');
+    }
+
+    function closeFoodModal() {
+      document.getElementById('food-modal').classList.remove('open');
+    }
+
+    async function handleFoodFormSubmit(event) {
+      event.preventDefault();
+      
+      const foodId = document.getElementById('food-id').value;
+      const name = document.getElementById('food-name').value.trim();
+      const category_id = document.getElementById('food-category').value;
+      const price = parseFloat(document.getElementById('food-price').value);
+      const description = document.getElementById('food-description').value.trim();
+      const image = document.getElementById('food-image').value.trim();
+      const availability = document.getElementById('food-availability').checked ? 1 : 0;
+
+      const data = { name, category_id, price, description, image, availability };
+
+      try {
+        if (foodId) {
+          // Edit operation
+          await API.editFood(foodId, data);
+        } else {
+          // Add operation
+          await API.addFood(data);
+        }
+        closeFoodModal();
+        loadFoodsList();
+      } catch (error) {
+        alert('Failed to save food item: ' + error.message);
+      }
+    }
+
+    async function deleteFood(id) {
+      if (confirm('Are you sure you want to permanently delete this food item? This action is irreversible.')) {
+        try {
+          await API.deleteFood(id);
+          loadFoodsList();
+        } catch (error) {
+          alert('Failed to delete food item: ' + error.message);
+        }
+      }
+    }
+  </script>
+</body>
+</html>

@@ -1,0 +1,212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sales Reports | Admin Portal</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <div class="admin-container">
+    <aside class="admin-sidebar" id="admin-sidebar"></aside>
+
+    <main class="admin-content">
+      <div class="panel-header" style="margin-bottom: 2rem;">
+        <div>
+          <h2 style="font-size: 1.8rem; font-weight: 700;"><i class="fas fa-file-invoice-dollar"></i> Canteen Sales Reports</h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Track daily sales performance, order conversions, and billing statuses.</p>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stats-card">
+          <div>
+            <span class="stats-label">Gross Revenue</span>
+            <div class="stats-value" id="gross-revenue" style="color: var(--success);">৳0.00</div>
+          </div>
+          <div class="stats-card-icon"><i class="fas fa-sack-dollar"></i></div>
+        </div>
+
+        <div class="stats-card">
+          <div>
+            <span class="stats-label">Total Transactions</span>
+            <div class="stats-value" id="total-transactions">0</div>
+          </div>
+          <div class="stats-card-icon"><i class="fas fa-receipt"></i></div>
+        </div>
+
+        <div class="stats-card">
+          <div>
+            <span class="stats-label">Avg Order Value</span>
+            <div class="stats-value" id="avg-order-value" style="color: var(--info);">৳0.00</div>
+          </div>
+          <div class="stats-card-icon"><i class="fas fa-percentage"></i></div>
+        </div>
+      </div>
+
+      <div style="display: grid; grid-template-columns: 1.2fr 1.8fr; gap: 2rem; align-items: start; margin-bottom: 2rem;">
+        <!-- Status distribution progress metrics -->
+        <div class="panel" style="margin-bottom: 0;">
+          <h3 class="panel-title" style="margin-bottom: 1.5rem;"><i class="fas fa-chart-pie"></i> Status Distribution</h3>
+          
+          <div id="status-bars" style="display: grid; gap: 1.25rem;">
+            <!-- Dynamic distribution bars -->
+            <div style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              <i class="fas fa-spinner fa-spin"></i> Compiling records...
+            </div>
+          </div>
+        </div>
+
+        <!-- Orders Table List -->
+        <div class="panel" style="margin-bottom: 0;">
+          <h3 class="panel-title" style="margin-bottom: 1.5rem;"><i class="fas fa-list"></i> Detailed Sales Log</h3>
+          
+          <div class="table-responsive">
+            <table class="admin-table">
+              <thead>
+                <tr>
+                  <th>Token</th>
+                  <th>Customer</th>
+                  <th>Order Time</th>
+                  <th>Grand Total</th>
+                  <th>Status</th>
+                </tr>
+              </thead>
+              <tbody id="sales-log-body">
+                <tr>
+                  <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                    Loading log details...
+                  </td>
+                </tr>
+              </tbody>
+            </table>
+          </div>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/admin/admin.js"></script>
+
+  <script>
+    async function onAdminPageLoad() {
+      loadSalesReport();
+    }
+
+    async function loadSalesReport() {
+      try {
+        const report = await API.getSalesReport();
+
+        // Calculate and populate Stats
+        const totalRev = parseFloat(report.total_sales || 0);
+        const totalOrders = parseInt(report.total_orders_count || 0);
+        const avgValue = totalOrders > 0 ? (totalRev / totalOrders) : 0;
+
+        document.getElementById('gross-revenue').textContent = `৳${totalRev.toFixed(2)}`;
+        document.getElementById('total-transactions').textContent = totalOrders;
+        document.getElementById('avg-order-value').textContent = `৳${avgValue.toFixed(2)}`;
+
+        // Render Status Distribution List
+        renderStatusDistribution(report.status_distribution, totalOrders);
+
+        // Render Sales Table Logs
+        renderSalesLogsTable(report.orders_list);
+
+      } catch (error) {
+        console.error('Failed to compile sales report:', error);
+      }
+    }
+
+    function renderStatusDistribution(dist, total) {
+      const container = document.getElementById('status-bars');
+      container.innerHTML = '';
+
+      if (total === 0) {
+        container.innerHTML = `<div style="text-align: center; color: var(--text-muted);">No sales data registered.</div>`;
+        return;
+      }
+
+      const statuses = ['Pending', 'Preparing', 'Ready', 'Completed'];
+      const colors = {
+        Pending: 'var(--primary)',
+        Preparing: 'var(--info)',
+        Ready: 'var(--warning)',
+        Completed: 'var(--success)'
+      };
+
+      statuses.forEach(status => {
+        const count = dist[status] || 0;
+        const pct = ((count / total) * 100).toFixed(0);
+
+        const row = document.createElement('div');
+        row.innerHTML = `
+          <div style="display: flex; justify-content: space-between; font-size: 0.85rem; font-weight: 600; margin-bottom: 0.25rem;">
+            <span>${status}</span>
+            <span>${count} (${pct}%)</span>
+          </div>
+          <div style="width: 100%; height: 8px; background-color: var(--bg-primary); border: 1px solid var(--border-color); border-radius: 4px; overflow: hidden;">
+            <div style="width: ${pct}%; height: 100%; background-color: ${colors[status]};"></div>
+          </div>
+        `;
+        container.appendChild(row);
+      });
+    }
+
+    function renderSalesLogsTable(orders) {
+      const tbody = document.getElementById('sales-log-body');
+      tbody.innerHTML = '';
+
+      if (orders.length === 0) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="5" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+              No records found.
+            </td>
+          </tr>
+        `;
+        return;
+      }
+
+      orders.forEach(order => {
+        let badgeClass = '';
+        if (order.status === 'Pending') badgeClass = 'status-pending';
+        else if (order.status === 'Preparing') badgeClass = 'status-preparing';
+        else if (order.status === 'Ready') badgeClass = 'status-ready';
+        else badgeClass = 'status-completed';
+
+        const dateStr = new Date(order.order_time).toLocaleDateString('en-US', {
+          month: 'short',
+          day: 'numeric',
+          year: 'numeric'
+        });
+
+        const timeStr = new Date(order.order_time).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        const row = document.createElement('tr');
+        row.innerHTML = `
+          <td style="font-weight: 700; color: var(--primary);">${order.token_number}</td>
+          <td style="font-weight: 500;">${order.customer_name}</td>
+          <td>
+            <div>${dateStr}</div>
+            <div style="font-size: 0.75rem; color: var(--text-muted);">${timeStr}</div>
+          </td>
+          <td style="font-weight: 700;">৳${parseFloat(order.total_amount).toFixed(2)}</td>
+          <td><span class="status-badge ${badgeClass}">${order.status}</span></td>
+        </tr>
+        `;
+        tbody.appendChild(row);
+      });
+    }
+  </script>
+</body>
+</html>

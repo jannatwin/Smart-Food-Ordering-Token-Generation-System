@@ -1,0 +1,182 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Admin Dashboard | Smart Food Ordering System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <!-- Top bar header -->
+  <header id="main-header"></header>
+
+  <div class="admin-container">
+    <!-- Sidebar navigation placeholder -->
+    <aside class="admin-sidebar" id="admin-sidebar"></aside>
+
+    <!-- Content Panel -->
+    <main class="admin-content">
+      <div class="panel-header" style="margin-bottom: 2rem;">
+        <div>
+          <h2 style="font-size: 1.8rem; font-weight: 700;">Dashboard Summary</h2>
+          <p style="color: var(--text-muted); font-size: 0.95rem;">Real-time stats updates and recent activity overview.</p>
+        </div>
+      </div>
+
+      <!-- Stats Cards -->
+      <div class="stats-grid">
+        <div class="stats-card">
+          <div>
+            <span class="stats-label">Total Orders</span>
+            <div class="stats-value" id="stat-total-orders">0</div>
+          </div>
+          <div class="stats-card-icon"><i class="fas fa-shopping-bag"></i></div>
+        </div>
+
+        <div class="stats-card">
+          <div>
+            <span class="stats-label">Pending Queue</span>
+            <div class="stats-value" id="stat-pending-orders" style="color: var(--primary);">0</div>
+          </div>
+          <div class="stats-card-icon"><i class="fas fa-hourglass-half"></i></div>
+        </div>
+
+        <div class="stats-card">
+          <div>
+            <span class="stats-label">Ready for Pick Up</span>
+            <div class="stats-value" id="stat-ready-orders" style="color: var(--warning);">0</div>
+          </div>
+          <div class="stats-card-icon"><i class="fas fa-bell"></i></div>
+        </div>
+
+        <div class="stats-card">
+          <div>
+            <span class="stats-label">Total Revenue</span>
+            <div class="stats-value" id="stat-total-revenue" style="color: var(--success);">৳0.00</div>
+          </div>
+          <div class="stats-card-icon"><i class="fas fa-sack-dollar"></i></div>
+        </div>
+      </div>
+
+      <!-- Recent Orders List Panel -->
+      <div class="panel">
+        <div class="panel-header">
+          <h3 class="panel-title"><i class="fas fa-receipt"></i> Recent Orders</h3>
+          <a href="/admin/orders" class="btn btn-secondary btn-sm">Manage All Orders <i class="fas fa-arrow-right"></i></a>
+        </div>
+        
+        <div class="table-responsive">
+          <table class="admin-table">
+            <thead>
+              <tr>
+                <th>Token</th>
+                <th>Customer</th>
+                <th>Dine-in Location</th>
+                <th>Order Time</th>
+                <th>Amount</th>
+                <th>Status</th>
+              </tr>
+            </thead>
+            <tbody id="recent-orders-list">
+              <tr>
+                <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                  <i class="fas fa-spinner fa-spin" style="margin-right: 0.5rem;"></i> Loading recent orders...
+                </td>
+              </tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </main>
+  </div>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  <script src="/admin/admin.js"></script>
+
+  <script>
+    // Called automatically by admin.js after verifying auth
+    async function onAdminPageLoad() {
+      loadStats();
+      loadRecentOrders();
+    }
+
+    async function loadStats() {
+      try {
+        const stats = await API.getAdminStats();
+        document.getElementById('stat-total-orders').textContent = stats.total_orders;
+        document.getElementById('stat-pending-orders').textContent = stats.pending_orders;
+        document.getElementById('stat-ready-orders').textContent = stats.ready_orders;
+        document.getElementById('stat-total-revenue').textContent = `৳${parseFloat(stats.total_revenue).toFixed(2)}`;
+      } catch (error) {
+        console.error('Failed to load admin stats:', error);
+      }
+    }
+
+    async function loadRecentOrders() {
+      const tbody = document.getElementById('recent-orders-list');
+      try {
+        const orders = await API.getAdminOrders();
+        
+        if (orders.length === 0) {
+          tbody.innerHTML = `
+            <tr>
+              <td colspan="6" style="text-align: center; color: var(--text-muted); padding: 2rem;">
+                No orders found in system.
+              </td>
+            </tr>
+          `;
+          return;
+        }
+
+        // Display only first 5 recent orders
+        const recent = orders.slice(0, 5);
+        let html = '';
+
+        recent.forEach(order => {
+          let badgeClass = '';
+          if (order.status === 'Pending') badgeClass = 'status-pending';
+          else if (order.status === 'Preparing') badgeClass = 'status-preparing';
+          else if (order.status === 'Ready') badgeClass = 'status-ready';
+          else badgeClass = 'status-completed';
+
+          const timeStr = new Date(order.order_time).toLocaleTimeString('en-US', {
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          // Fetch Table location or mock counter pick-up
+          const notesStr = order.items && order.items.length > 0 ? order.items.map(i => i.name).join(', ') : 'No description';
+
+          html += `
+            <tr>
+              <td style="font-weight: 700; color: var(--primary);">${order.token_number}</td>
+              <td>
+                <div style="font-weight: 600;">${order.customer_name}</div>
+                <div style="font-size: 0.75rem; color: var(--text-muted);">${order.customer_email}</div>
+              </td>
+              <td>Dine-In / Counter</td>
+              <td>${timeStr}</td>
+              <td style="font-weight: 700;">৳${parseFloat(order.total_amount).toFixed(2)}</td>
+              <td><span class="status-badge ${badgeClass}">${order.status}</span></td>
+            </tr>
+          `;
+        });
+
+        tbody.innerHTML = html;
+
+      } catch (error) {
+        tbody.innerHTML = `
+          <tr>
+            <td colspan="6" style="text-align: center; color: var(--danger); padding: 2rem;">
+              Failed to load order listings.
+            </td>
+          </tr>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

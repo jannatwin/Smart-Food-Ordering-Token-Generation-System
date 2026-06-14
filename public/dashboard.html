@@ -1,0 +1,204 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Customer Dashboard | Smart Food Ordering System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <main class="container">
+    <!-- Dashboard header card -->
+    <div style="background: linear-gradient(135deg, var(--bg-secondary) 0%, var(--bg-tertiary) 100%); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 2.5rem; margin-bottom: 2.5rem; display: flex; align-items: center; justify-content: space-between; flex-wrap: wrap; gap: 1.5rem; box-shadow: var(--card-shadow);">
+      <div>
+        <h2 style="font-size: 2rem; font-weight: 800; margin-bottom: 0.25rem;">Hello, <span id="user-display-name" style="color: var(--primary);">User</span>!</h2>
+        <p style="color: var(--text-muted); font-size: 0.95rem;">Manage your current food tokens and view order history details.</p>
+      </div>
+      <div style="text-align: right;" id="user-email-meta">
+        <!-- user email metadata -->
+      </div>
+    </div>
+
+    <!-- Active Orders Board -->
+    <div id="active-orders-section" style="display: none; margin-bottom: 3rem;">
+      <h3 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 1.25rem; color: var(--primary);">Active Meal Tokens</h3>
+      <div class="food-grid" id="active-orders-list">
+        <!-- Dynamic active tokens grid items -->
+      </div>
+    </div>
+
+    <!-- Order History List -->
+    <div>
+      <h3 style="font-size: 1.4rem; font-weight: 700; margin-bottom: 1.25rem;">Your Order History</h3>
+      <div id="history-container">
+        <!-- Injected table / history cards -->
+        <div style="text-align: center; padding: 3rem; color: var(--text-muted);">
+          <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem; color: var(--primary);"></i>
+          <p>Loading history records...</p>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="main-footer"></footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+
+  <script>
+    document.addEventListener('DOMContentLoaded', async () => {
+      // 1. Double check auth protection
+      const user = await API.getCurrentUser();
+      if (!user) {
+        window.location.href = '/login?redirect=' + encodeURIComponent('/dashboard');
+        return;
+      }
+
+      // 2. Prefill user profile meta
+      document.getElementById('user-display-name').textContent = user.full_name;
+      document.getElementById('user-email-meta').innerHTML = `
+        <div style="font-weight: 600; color: var(--text-main);"><i class="fas fa-envelope"></i> ${user.email}</div>
+        <div style="font-size: 0.75rem; color: var(--text-muted); text-transform: uppercase; margin-top: 0.25rem;">Role: ${user.role}</div>
+      `;
+
+      // 3. Load order history
+      loadOrderHistory();
+    });
+
+    async function loadOrderHistory() {
+      const activeSection = document.getElementById('active-orders-section');
+      const activeList = document.getElementById('active-orders-list');
+      const historyContainer = document.getElementById('history-container');
+
+      try {
+        const orders = await API.getMyOrders();
+
+        if (orders.length === 0) {
+          historyContainer.innerHTML = `
+            <div style="text-align: center; padding: 4rem 2rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius);">
+              <i class="fas fa-history" style="font-size: 3rem; color: var(--text-muted); margin-bottom: 1rem;"></i>
+              <p>You haven't placed any orders yet. Visit our menu and place your first food order!</p>
+              <a href="/menu" class="btn btn-primary" style="margin-top: 1.5rem;"><i class="fas fa-utensils"></i> Browse Food Menu</a>
+            </div>
+          `;
+          return;
+        }
+
+        // Segment orders: Active (Pending, Preparing, Ready) and Completed
+        const activeOrders = orders.filter(o => o.status !== 'Completed');
+        const completedOrders = orders.filter(o => o.status === 'Completed');
+
+        // Render Active Tokens
+        if (activeOrders.length > 0) {
+          activeSection.style.display = 'block';
+          activeList.innerHTML = '';
+
+          activeOrders.forEach(order => {
+            const card = document.createElement('div');
+            card.className = 'feature-card';
+            card.style.textAlign = 'left';
+            card.style.padding = '1.5rem';
+
+            // Get status description
+            let statusText = '';
+            let statusIcon = '';
+            let statusClass = '';
+
+            if (order.status === 'Pending') {
+              statusText = 'Order received. Awaiting prep.';
+              statusIcon = 'fa-hourglass-start';
+              statusClass = 'status-pending';
+            } else if (order.status === 'Preparing') {
+              statusText = 'Chef is preparing your meal.';
+              statusIcon = 'fa-fire-burner';
+              statusClass = 'status-preparing';
+            } else {
+              statusText = 'Food is ready! Collect at counter.';
+              statusIcon = 'fa-bell';
+              statusClass = 'status-ready';
+            }
+
+            card.innerHTML = `
+              <div style="display: flex; justify-content: space-between; align-items: center; margin-bottom: 1rem;">
+                <span style="font-size: 1.5rem; font-weight: 800; color: var(--primary);">${order.token_number}</span>
+                <span class="status-badge ${statusClass}"><i class="fas ${statusIcon}"></i> ${order.status}</span>
+              </div>
+              <p style="font-size: 0.85rem; color: var(--text-muted); margin-bottom: 1.25rem;">${statusText}</p>
+              <a href="/track?token=${order.token_number}" class="btn btn-primary btn-sm" style="width: 100%;"><i class="fas fa-clock"></i> Track Live Status</a>
+            `;
+
+            activeList.appendChild(card);
+          });
+        } else {
+          activeSection.style.display = 'none';
+        }
+
+        // Render History Table
+        let historyCardsHtml = '';
+        orders.forEach(order => {
+          let statusBadgeClass = '';
+          if (order.status === 'Pending') statusBadgeClass = 'status-pending';
+          else if (order.status === 'Preparing') statusBadgeClass = 'status-preparing';
+          else if (order.status === 'Ready') statusBadgeClass = 'status-ready';
+          else statusBadgeClass = 'status-completed';
+
+          const formattedTime = new Date(order.order_time).toLocaleString('en-US', {
+            month: 'short',
+            day: 'numeric',
+            year: 'numeric',
+            hour: '2-digit',
+            minute: '2-digit'
+          });
+
+          // Compile short names string
+          const itemNames = order.items.map(i => `${i.name} (${i.quantity})`).join(', ');
+
+          historyCardsHtml += `
+            <div class="history-card">
+              <div class="history-header">
+                <div>
+                  <span class="history-token">${order.token_number}</span>
+                  <span class="history-meta" style="margin-left: 1rem;">Placed on: ${formattedTime}</span>
+                </div>
+                <div>
+                  <span class="status-badge ${statusBadgeClass}">${order.status}</span>
+                </div>
+              </div>
+              
+              <div style="display: flex; justify-content: space-between; align-items: center; flex-wrap: wrap; gap: 1rem;">
+                <div style="flex: 1; min-width: 250px;">
+                  <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Items Ordered</div>
+                  <div style="font-size: 0.95rem; color: var(--text-main); font-weight: 500; margin-top: 0.25rem;">${itemNames}</div>
+                </div>
+                
+                <div style="text-align: right; min-width: 100px;">
+                  <div style="font-size: 0.8rem; text-transform: uppercase; color: var(--text-muted); font-weight: 600;">Total Amount</div>
+                  <div style="font-size: 1.1rem; color: var(--primary); font-weight: 700; margin-top: 0.25rem;">৳${parseFloat(order.total_amount).toFixed(2)}</div>
+                </div>
+
+                <div style="display: flex; gap: 0.5rem;">
+                  <a href="/track?token=${order.token_number}" class="btn btn-secondary btn-sm"><i class="fas fa-eye"></i> View Track</a>
+                </div>
+              </div>
+            </div>
+          `;
+        });
+
+        historyContainer.innerHTML = historyCardsHtml;
+
+      } catch (error) {
+        historyContainer.innerHTML = `
+          <div style="text-align: center; padding: 4rem; color: var(--danger);">
+            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+            <p>Failed to load order history records. Please reload the dashboard.</p>
+          </div>
+        `;
+      }
+    }
+  </script>
+</body>
+</html>

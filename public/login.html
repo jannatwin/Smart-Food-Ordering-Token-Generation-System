@@ -1,0 +1,85 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Login | Smart Food Ordering System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <main>
+    <div class="container">
+      <div class="auth-box">
+        <h2>Welcome Back</h2>
+        <p>Login to place orders and manage your tokens.</p>
+        
+        <div id="error-container"></div>
+
+        <form id="login-form">
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" class="form-control" placeholder="customer@cafeteria.com" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="••••••••" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-sign-in-alt"></i> Login</button>
+        </form>
+
+        <div class="auth-footer">
+          Don't have an account? <a href="/signup">Sign Up</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="main-footer"></footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('login-form');
+      const errBox = document.getElementById('error-container');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errBox.innerHTML = ''; // Clear prior errors
+
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+
+        try {
+          const res = await API.login(email, password);
+          
+          // Successful login. Redirect based on role or original URL parameters
+          const user = res.user;
+          const urlParams = new URLSearchParams(window.location.search);
+          const redirectPath = urlParams.get('redirect');
+
+          if (redirectPath) {
+            window.location.href = decodeURIComponent(redirectPath);
+          } else if (user.role === 'admin') {
+            window.location.href = '/admin';
+          } else {
+            window.location.href = '/menu';
+          }
+        } catch (error) {
+          errBox.innerHTML = `
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-circle"></i>
+              ${error.message}
+            </div>
+          `;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

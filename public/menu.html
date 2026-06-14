@@ -1,0 +1,197 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Food Menu | Smart Food Ordering System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <main class="container">
+    <div class="section-header">
+      <h2>Smart Canteen Menu</h2>
+      <p>Select your favorite dishes and order in seconds.</p>
+    </div>
+
+    <!-- Filters Area -->
+    <div class="menu-controls">
+      <div class="search-box">
+        <i class="fas fa-search"></i>
+        <input type="text" id="menu-search" class="form-control" placeholder="Search delicious food...">
+      </div>
+
+      <div class="category-tabs" id="categories-container">
+        <!-- Injected Categories tabs -->
+        <span class="category-tab active" data-id="">All Items</span>
+      </div>
+    </div>
+
+    <div id="alert-container"></div>
+
+    <!-- Food Cards Grid -->
+    <div class="food-grid" id="food-grid-container">
+      <div style="grid-column: 1/-1; text-align: center; padding: 3rem; color: var(--text-muted);">
+        <i class="fas fa-spinner fa-spin" style="font-size: 2rem; margin-bottom: 1rem; color: var(--primary);"></i>
+        <p>Loading menu items...</p>
+      </div>
+    </div>
+  </main>
+
+  <footer id="main-footer"></footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+
+  <script>
+    let activeCategoryId = '';
+    let searchQuery = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadCategories();
+      loadMenuItems();
+
+      // Search event listener (Debounced search input)
+      let searchTimeout;
+      document.getElementById('menu-search').addEventListener('input', (e) => {
+        clearTimeout(searchTimeout);
+        searchQuery = e.target.value.trim();
+        searchTimeout = setTimeout(() => {
+          loadMenuItems();
+        }, 300);
+      });
+    });
+
+    async function loadCategories() {
+      const container = document.getElementById('categories-container');
+      try {
+        const categories = await API.getCategories();
+        
+        categories.forEach(cat => {
+          const tab = document.createElement('span');
+          tab.className = 'category-tab';
+          tab.textContent = cat.category_name;
+          tab.setAttribute('data-id', cat.id);
+          
+          tab.addEventListener('click', () => {
+            // Update active tab style
+            document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+            tab.classList.add('active');
+            
+            activeCategoryId = cat.id;
+            loadMenuItems();
+          });
+          
+          container.appendChild(tab);
+        });
+
+        // Add event listener to "All Items" tab
+        document.querySelector('.category-tab[data-id=""]').addEventListener('click', function() {
+          document.querySelectorAll('.category-tab').forEach(t => t.classList.remove('active'));
+          this.classList.add('active');
+          activeCategoryId = '';
+          loadMenuItems();
+        });
+
+      } catch (error) {
+        console.error('Failed to load categories:', error);
+      }
+    }
+
+    async function loadMenuItems() {
+      const grid = document.getElementById('food-grid-container');
+      const alertContainer = document.getElementById('alert-container');
+      
+      try {
+        const items = await API.getMenuItems(activeCategoryId, searchQuery);
+        grid.innerHTML = '';
+        
+        if (items.length === 0) {
+          grid.innerHTML = `
+            <div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--text-muted);">
+              <i class="fas fa-hamburger" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+              <p>No food items match your criteria. Try another search or filter!</p>
+            </div>
+          `;
+          return;
+        }
+
+        items.forEach(item => {
+          const card = document.createElement('div');
+          card.className = 'food-card';
+          
+          // Image fallback placeholder if image URL is invalid/empty
+          const imgSrc = item.image || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80';
+          
+          const badgeHtml = item.category_name ? `<span class="food-badge">${item.category_name}</span>` : '';
+          const availabilityHtml = !item.availability ? `<span class="food-availability">Sold Out</span>` : '';
+          
+          // Add to Cart Button behavior
+          const disabledAttr = !item.availability ? 'disabled style="background-color: var(--bg-tertiary); cursor: not-allowed; border-color: var(--border-color); color: var(--text-muted);"' : '';
+          const btnText = item.availability ? '<i class="fas fa-plus"></i> Add to Cart' : 'Unavailable';
+          const btnClass = item.availability ? 'btn-primary' : 'btn-secondary';
+
+          card.innerHTML = `
+            <div class="food-image-wrapper">
+              <img class="food-image" src="${imgSrc}" alt="${item.name}">
+              ${badgeHtml}
+              ${availabilityHtml}
+            </div>
+            <div class="food-info">
+              <h3 class="food-title">${item.name}</h3>
+              <p class="food-desc">${item.description || 'No description available for this item.'}</p>
+              <div class="food-footer">
+                <span class="food-price">৳${parseFloat(item.price).toFixed(2)}</span>
+                <button class="btn ${btnClass} btn-sm add-cart-btn" data-id="${item.id}" ${disabledAttr}>
+                  ${btnText}
+                </button>
+              </div>
+            </div>
+          `;
+
+          // Bind cart event
+          const addBtn = card.querySelector('.add-cart-btn');
+          if (addBtn && item.availability) {
+            addBtn.addEventListener('click', () => {
+              Cart.add(item, 1);
+              
+              // Simple visually pleasing alert feedback
+              alertContainer.innerHTML = `
+                <div class="alert alert-success" style="position: fixed; bottom: 20px; right: 20px; z-index: 1000; margin-bottom: 0; box-shadow: var(--card-shadow); animation: slideUp 0.3s ease-out;">
+                  <i class="fas fa-shopping-basket"></i> Added ${item.name} to your cart!
+                </div>
+              `;
+              
+              // Clear notification after 2.5 seconds
+              setTimeout(() => {
+                const toast = alertContainer.querySelector('.alert');
+                if (toast) toast.remove();
+              }, 2500);
+            });
+          }
+
+          grid.appendChild(card);
+        });
+
+      } catch (error) {
+        grid.innerHTML = `
+          <div style="grid-column: 1/-1; text-align: center; padding: 4rem; color: var(--danger);">
+            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1rem;"></i>
+            <p>Failed to load food menu. Please try again later.</p>
+          </div>
+        `;
+      }
+    }
+  </script>
+  
+  <style>
+    @keyframes slideUp {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</body>
+</html>

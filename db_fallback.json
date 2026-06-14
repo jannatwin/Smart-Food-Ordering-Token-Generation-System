@@ -1,0 +1,180 @@
+{
+  "users": [
+    {
+      "id": 1,
+      "full_name": "System Admin",
+      "email": "admin@cafeteria.com",
+      "password": "$2a$10$k7Fj11rpC.qo29ipjg9TYO.WZc4grO3di4TNkBtq1ROPtquqGtWyi",
+      "role": "admin",
+      "created_at": "2026-06-12T08:00:05.632Z"
+    },
+    {
+      "id": 2,
+      "full_name": "John Doe",
+      "email": "customer@cafeteria.com",
+      "password": "$2a$10$k7Fj11rpC.qo29ipjg9TYOlcovwtbq9bVoj6ousXtCHpEyZtLkSv2",
+      "role": "customer",
+      "created_at": "2026-06-12T08:00:05.633Z"
+    },
+    {
+      "id": 3,
+      "full_name": "jannat",
+      "email": "2202jannat@gmail.com",
+      "password": "$2a$10$zLGOTF/dthSmYhDVvz2uRexh96CV8afxO7rYSDj0yj6I4UJmeTq7m",
+      "role": "customer",
+      "created_at": "2026-06-12T08:02:48.915Z"
+    },
+    {
+      "id": 4,
+      "full_name": "jannat",
+      "email": "jannatwin03@gmail.com",
+      "password": "$2a$10$s0Uq/kLTbncwjsUZSWsivuU/2q2C2yDoMVzbAdTQ3pBUa3zWLtEVe",
+      "role": "customer",
+      "created_at": "2026-06-13T19:54:28.309Z"
+    }
+  ],
+  "categories": [
+    {
+      "id": 1,
+      "category_name": "Breakfast"
+    },
+    {
+      "id": 2,
+      "category_name": "Main Dishes"
+    },
+    {
+      "id": 3,
+      "category_name": "Snacks & Fast Food"
+    },
+    {
+      "id": 4,
+      "category_name": "Desserts"
+    }
+  ],
+  "food_items": [
+    {
+      "id": 1,
+      "name": "Chicken Lollipop",
+      "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry. Lorem Ipsum has been the industry's standard dummy text",
+      "price": 160,
+      "image": "https://images.pexels.com/photos/20371525/pexels-photo-20371525.jpeg",
+      "category_id": 1,
+      "availability": 1
+    },
+    {
+      "id": 2,
+      "name": "Spicy Wings",
+      "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+      "price": 150,
+      "image": "https://images.pexels.com/photos/16845330/pexels-photo-16845330.jpeg",
+      "category_id": 1,
+      "availability": 1
+    },
+    {
+      "id": 3,
+      "name": "Chicken Slider Burger",
+      "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+      "price": 90,
+      "image": "https://images.pexels.com/photos/5374420/pexels-photo-5374420.jpeg",
+      "category_id": 3,
+      "availability": 1
+    },
+    {
+      "id": 4,
+      "name": "Spicy Beef Burger",
+      "description": "Grilled beef patty with spicy jalapeño sauce, cheddar cheese, lettuce, and onions in a brioche bun.",
+      "price": 180,
+      "image": "https://images.unsplash.com/photo-1568901346375-23c9450c58cd?auto=format&fit=crop&w=500&q=80",
+      "category_id": 3,
+      "availability": 1
+    },
+    {
+      "id": 5,
+      "name": "Loaded Cheese Fries",
+      "description": "Crispy golden fries smothered in warm cheddar cheese sauce, topped with spring onions.",
+      "price": 110,
+      "image": "https://images.unsplash.com/photo-1585109649139-366815a0d713?auto=format&fit=crop&w=500&q=80",
+      "category_id": 3,
+      "availability": 1
+    },
+    {
+      "id": 6,
+      "name": "Chocolate Lava Cake",
+      "description": "Warm chocolate cake with a molten chocolate center, served with vanilla ice cream.",
+      "price": 140,
+      "image": "https://images.unsplash.com/photo-1606313564200-e75d5e30476c?auto=format&fit=crop&w=500&q=80",
+      "category_id": 4,
+      "availability": 1
+    },
+    {
+      "id": 7,
+      "name": "Fried Rice",
+      "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+      "price": 180,
+      "image": "https://images.pexels.com/photos/8570300/pexels-photo-8570300.jpeg",
+      "category_id": 2,
+      "availability": 1
+    },
+    {
+      "id": 8,
+      "name": "Beef Biriani",
+      "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+      "price": 120,
+      "image": "https://images.pexels.com/photos/14731729/pexels-photo-14731729.jpeg",
+      "category_id": 2,
+      "availability": 1
+    },
+    {
+      "id": 9,
+      "name": "Morog Polao",
+      "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+      "price": 120,
+      "image": "https://images.pexels.com/photos/14731636/pexels-photo-14731636.jpeg",
+      "category_id": 2,
+      "availability": 1
+    },
+    {
+      "id": 10,
+      "name": "BBQ Pizza",
+      "description": "Lorem Ipsum is simply dummy text of the printing and typesetting industry.",
+      "price": 210,
+      "image": "https://images.pexels.com/photos/4049145/pexels-photo-4049145.jpeg",
+      "category_id": 3,
+      "availability": 1
+    }
+  ],
+  "orders": [
+    {
+      "id": 1,
+      "user_id": 3,
+      "token_number": "T001",
+      "total_amount": 240,
+      "status": "Ready",
+      "order_time": "2026-06-12T08:05:01.105Z"
+    },
+    {
+      "id": 2,
+      "user_id": 4,
+      "token_number": "T001",
+      "total_amount": 150,
+      "status": "Pending",
+      "order_time": "2026-06-13T19:55:32.823Z"
+    }
+  ],
+  "order_items": [
+    {
+      "id": 1,
+      "order_id": 1,
+      "food_id": 1,
+      "quantity": 2,
+      "subtotal": 240
+    },
+    {
+      "id": 2,
+      "order_id": 2,
+      "food_id": 2,
+      "quantity": 1,
+      "subtotal": 150
+    }
+  ]
+}

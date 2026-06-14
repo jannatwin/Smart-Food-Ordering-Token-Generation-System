@@ -1,0 +1,94 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Sign Up | Smart Food Ordering System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <main>
+    <div class="container">
+      <div class="auth-box">
+        <h2>Create Account</h2>
+        <p>Register as a customer to start ordering meals online.</p>
+        
+        <div id="error-container"></div>
+
+        <form id="signup-form">
+          <div class="form-group">
+            <label for="name">Full Name</label>
+            <input type="text" id="name" class="form-control" placeholder="John Doe" required>
+          </div>
+          <div class="form-group">
+            <label for="email">Email Address</label>
+            <input type="email" id="email" class="form-control" placeholder="john@example.com" required>
+          </div>
+          <div class="form-group">
+            <label for="password">Password</label>
+            <input type="password" id="password" class="form-control" placeholder="At least 6 characters" required>
+          </div>
+          <div class="form-group" style="margin-bottom: 2rem;">
+            <label for="confirm-password">Confirm Password</label>
+            <input type="password" id="confirm-password" class="form-control" placeholder="Repeat your password" required>
+          </div>
+          <button type="submit" class="btn btn-primary" style="width: 100%;"><i class="fas fa-user-plus"></i> Sign Up</button>
+        </form>
+
+        <div class="auth-footer">
+          Already have an account? <a href="/login">Login</a>
+        </div>
+      </div>
+    </div>
+  </main>
+
+  <footer id="main-footer"></footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+  
+  <script>
+    document.addEventListener('DOMContentLoaded', () => {
+      const form = document.getElementById('signup-form');
+      const errBox = document.getElementById('error-container');
+
+      form.addEventListener('submit', async (e) => {
+        e.preventDefault();
+        errBox.innerHTML = ''; // Clear prior errors
+
+        const fullName = document.getElementById('name').value.trim();
+        const email = document.getElementById('email').value.trim();
+        const password = document.getElementById('password').value;
+        const confirmPassword = document.getElementById('confirm-password').value;
+
+        // Validation checks
+        if (password !== confirmPassword) {
+          errBox.innerHTML = `
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-circle"></i>
+              Passwords do not match.
+            </div>
+          `;
+          return;
+        }
+
+        try {
+          await API.signup(fullName, email, password);
+          window.location.href = '/menu'; // Redirect upon successful signup
+        } catch (error) {
+          errBox.innerHTML = `
+            <div class="alert alert-danger">
+              <i class="fas fa-exclamation-circle"></i>
+              ${error.message}
+            </div>
+          `;
+        }
+      });
+    });
+  </script>
+</body>
+</html>

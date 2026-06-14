@@ -1,0 +1,237 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Track Order | Smart Food Ordering System</title>
+  <link rel="stylesheet" href="/css/style.css">
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+</head>
+<body>
+
+  <header id="main-header"></header>
+
+  <main class="container">
+    <div class="section-header">
+      <h2>Live Token Status</h2>
+      <p>Search any order token number to check its current preparation stage.</p>
+    </div>
+
+    <!-- Search Bar -->
+    <div style="max-width: 500px; margin: 0 auto 3rem; display: flex; gap: 0.75rem;">
+      <input type="text" id="track-token-input" class="form-control" placeholder="Enter Token Number (e.g. T001)" style="font-weight: 700; text-transform: uppercase;">
+      <button class="btn btn-primary" onclick="searchToken()"><i class="fas fa-search"></i> Search</button>
+    </div>
+
+    <div id="tracking-display-container">
+      <!-- Empty State / Search Prompt -->
+      <div style="text-align: center; padding: 4rem 2rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius); max-width: 600px; margin: 0 auto;">
+        <i class="fas fa-ticket-alt" style="font-size: 3.5rem; color: var(--text-muted); margin-bottom: 1.5rem;"></i>
+        <h3 style="font-size: 1.4rem; margin-bottom: 0.5rem;">Enter a Token Number</h3>
+        <p style="color: var(--text-muted);">Please type your generated token number in the search field above to track your order details and preparation state in real-time.</p>
+      </div>
+    </div>
+  </main>
+
+  <footer id="main-footer"></footer>
+
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+
+  <script>
+    let pollInterval = null;
+    let currentToken = '';
+
+    document.addEventListener('DOMContentLoaded', () => {
+      // Check if URL has token parameters (e.g. ?token=T001)
+      const urlParams = new URLSearchParams(window.location.search);
+      const token = urlParams.get('token');
+      if (token) {
+        document.getElementById('track-token-input').value = token;
+        currentToken = token.trim();
+        loadTrackingInfo();
+        startPolling();
+      }
+    });
+
+    function searchToken() {
+      const inputVal = document.getElementById('track-token-input').value.trim();
+      if (!inputVal) {
+        alert('Please enter a valid token number.');
+        return;
+      }
+      
+      currentToken = inputVal;
+      // Update browser URL query string without reloading page
+      const newUrl = window.location.protocol + "//" + window.location.host + window.location.pathname + '?token=' + encodeURIComponent(currentToken);
+      window.history.pushState({ path: newUrl }, '', newUrl);
+
+      loadTrackingInfo();
+      startPolling();
+    }
+
+    async function loadTrackingInfo() {
+      const display = document.getElementById('tracking-display-container');
+      
+      try {
+        const details = await API.trackOrder(currentToken);
+        const order = details.order;
+        const items = details.items;
+
+        // Calculate steps visual state
+        let progressWidth = '0%';
+        let step1Class = 'active';
+        let step2Class = '';
+        let step3Class = '';
+        let step4Class = '';
+
+        if (order.status === 'Pending') {
+          progressWidth = '0%';
+          step1Class = 'active';
+        } else if (order.status === 'Preparing') {
+          progressWidth = '33.3%';
+          step1Class = 'completed';
+          step2Class = 'active';
+        } else if (order.status === 'Ready') {
+          progressWidth = '66.6%';
+          step1Class = 'completed';
+          step2Class = 'completed';
+          step3Class = 'active';
+        } else if (order.status === 'Completed') {
+          progressWidth = '100%';
+          step1Class = 'completed';
+          step2Class = 'completed';
+          step3Class = 'completed';
+          step4Class = 'completed';
+        }
+
+        // Build items HTML list
+        let itemsHtml = '';
+        items.forEach(item => {
+          itemsHtml += `
+            <div style="display: flex; justify-content: space-between; padding: 0.75rem 0; border-bottom: 1px dashed var(--border-color); font-size: 0.95rem;">
+              <span>${item.name} <strong style="color: var(--primary);">x${item.quantity}</strong></span>
+              <span>৳${(item.price * item.quantity).toFixed(2)}</span>
+            </div>
+          `;
+        });
+
+        const formattedTime = new Date(order.order_time).toLocaleTimeString('en-US', {
+          hour: '2-digit',
+          minute: '2-digit'
+        });
+
+        display.innerHTML = `
+          <div style="max-width: 650px; margin: 0 auto;">
+            <!-- Main Tracking Card -->
+            <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 2.5rem; box-shadow: var(--card-shadow); text-align: center; margin-bottom: 2rem;">
+              <div style="display: flex; justify-content: space-between; align-items: center; border-bottom: 1px solid var(--border-color); padding-bottom: 1.25rem; margin-bottom: 2rem;">
+                <div style="text-align: left;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Token Reference</span>
+                  <div style="font-size: 2.2rem; font-weight: 800; color: var(--primary); margin-top: 0.25rem;">${order.token_number}</div>
+                </div>
+                <div style="text-align: right;">
+                  <span style="font-size: 0.8rem; color: var(--text-muted); text-transform: uppercase; font-weight: 600;">Time Placed</span>
+                  <div style="font-size: 1.1rem; font-weight: 600; margin-top: 0.5rem; color: var(--text-main);"><i class="far fa-clock"></i> ${formattedTime}</div>
+                </div>
+              </div>
+
+              <!-- Visual Progress Steps -->
+              <div class="track-progress">
+                <div class="progress-bar-fill" style="width: ${progressWidth};"></div>
+                
+                <div class="track-step ${step1Class}">
+                  <div class="step-node"><i class="fas fa-check"></i></div>
+                  <span class="step-label">Pending</span>
+                </div>
+                
+                <div class="track-step ${step2Class}">
+                  <div class="step-node">${order.status === 'Preparing' ? '<i class="fas fa-spinner fa-spin"></i>' : '<i class="fas fa-fire-burner"></i>'}</div>
+                  <span class="step-label">Preparing</span>
+                </div>
+                
+                <div class="track-step ${step3Class}">
+                  <div class="step-node">${order.status === 'Ready' ? '<i class="fas fa-bell fa-bounce" style="color: var(--warning);"></i>' : '<i class="fas fa-utensils"></i>'}</div>
+                  <span class="step-label">Ready</span>
+                </div>
+                
+                <div class="track-step ${step4Class}">
+                  <div class="step-node"><i class="fas fa-check-double"></i></div>
+                  <span class="step-label">Completed</span>
+                </div>
+              </div>
+
+              <!-- Status description alerts -->
+              <div style="margin-top: 2rem; padding: 1rem; border-radius: 8px; font-weight: 500; font-size: 0.95rem; background-color: var(--bg-primary); border: 1px solid var(--border-color);">
+                ${getStatusDescription(order.status)}
+              </div>
+            </div>
+
+            <!-- Ordered Food List Box -->
+            <div style="background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius); padding: 2rem; box-shadow: var(--card-shadow);">
+              <h3 style="font-size: 1.15rem; font-weight: 700; margin-bottom: 1.25rem; border-bottom: 1px solid var(--border-color); padding-bottom: 0.75rem;"><i class="fas fa-receipt"></i> Items in Order</h3>
+              
+              <div style="margin-bottom: 1.5rem;">
+                ${itemsHtml}
+              </div>
+
+              <div style="display: flex; justify-content: space-between; font-weight: 700; font-size: 1.1rem;">
+                <span>Total Amount Paid:</span>
+                <span style="color: var(--primary);">৳${parseFloat(order.total_amount).toFixed(2)}</span>
+              </div>
+            </div>
+            
+            <p style="text-align: center; color: var(--text-muted); font-size: 0.8rem; margin-top: 1.5rem;">
+              <i class="fas fa-sync fa-spin"></i> Live auto-checking status every 10 seconds...
+            </p>
+          </div>
+        `;
+
+      } catch (error) {
+        // Stop polling on error (e.g. token not found)
+        stopPolling();
+        display.innerHTML = `
+          <div style="text-align: center; padding: 4rem 2rem; background-color: var(--bg-secondary); border: 1px solid var(--border-color); border-radius: var(--border-radius); max-width: 600px; margin: 0 auto; color: var(--danger);">
+            <i class="fas fa-exclamation-triangle" style="font-size: 3rem; margin-bottom: 1.5rem;"></i>
+            <h3 style="font-size: 1.4rem; margin-bottom: 0.5rem;">Token Not Found</h3>
+            <p style="color: var(--text-muted);">${error.message}</p>
+          </div>
+        `;
+      }
+    }
+
+    function getStatusDescription(status) {
+      switch (status) {
+        case 'Pending':
+          return '<span style="color: var(--primary);"><i class="fas fa-clock"></i> Order Sent to Kitchen.</span> Awaiting queue assignment.';
+        case 'Preparing':
+          return '<span style="color: var(--info);"><i class="fas fa-fire-burner"></i> Food is cooking now.</span> Our kitchen team is preparing your fresh meal.';
+        case 'Ready':
+          return '<span style="color: var(--warning);"><i class="fas fa-bell"></i> Ready for Collection!</span> Please proceed to the Pick-up Counter and present your Token.';
+        case 'Completed':
+          return '<span style="color: var(--success);"><i class="fas fa-check-double"></i> Food Collected.</span> Thank you for dining with us! Enjoy your meal.';
+        default:
+          return 'No description.';
+      }
+    }
+
+    // Polling triggers
+    function startPolling() {
+      stopPolling();
+      pollInterval = setInterval(() => {
+        loadTrackingInfo();
+      }, 10000); // Check status every 10 seconds
+    }
+
+    function stopPolling() {
+      if (pollInterval) {
+        clearInterval(pollInterval);
+        pollInterval = null;
+      }
+    }
+
+    // Stop polling if navigating away
+    window.addEventListener('beforeunload', stopPolling);
+  </script>
+</body>
+</html>

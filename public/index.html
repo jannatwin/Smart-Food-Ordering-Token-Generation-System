@@ -1,0 +1,683 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Smart Food Ordering & Token Generation System</title>
+  <!-- Main styling sheet -->
+  <link rel="stylesheet" href="/css/style.css">
+  <!-- FontAwesome for icons -->
+  <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+  
+  <style>
+    /* Homepage catalog slider */
+    .menu-highlights-section {
+      width: 100%;
+      max-width: none;
+      margin: 0 0 5rem;
+      padding: 4.5rem 1.5rem 4rem;
+      background:
+        linear-gradient(180deg, rgba(255, 253, 248, 0.94), rgba(255, 248, 237, 0.96)),
+        radial-gradient(circle at 50% 16%, rgba(216, 79, 42, 0.10), transparent 28rem);
+      border-top: 1px solid rgba(36, 48, 38, 0.08);
+      border-bottom: 1px solid rgba(36, 48, 38, 0.08);
+    }
+
+    .menu-highlights-section .section-header {
+      margin-bottom: 1.25rem;
+    }
+
+    .menu-highlights-section .section-header h2 {
+      font-size: clamp(2.1rem, 4vw, 3.2rem);
+    }
+
+    .home-catalog-slider-container {
+      position: relative;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      max-width: 1180px !important;
+      margin: 0 auto;
+      padding: 0;
+      perspective: 1200px;
+    }
+
+    .home-catalog-slider-wrapper {
+      position: relative;
+      width: 100%;
+      height: 500px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      overflow: hidden;
+      touch-action: pan-y;
+      user-select: none;
+      -webkit-user-select: none;
+      -webkit-mask-image: linear-gradient(90deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+      mask-image: linear-gradient(90deg, transparent 0%, #000 10%, #000 90%, transparent 100%);
+    }
+
+    .home-catalog-slider {
+      position: relative;
+      width: 100%;
+      height: 100%;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transform-style: preserve-3d;
+    }
+
+    .home-catalog-slider .food-card {
+      position: absolute;
+      width: 390px;
+      height: 455px;
+      left: calc(50% - 195px);
+      transition: transform 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                  opacity 0.6s cubic-bezier(0.25, 0.8, 0.25, 1), 
+                  z-index 0.6s ease,
+                  border-color 0.3s ease,
+                  box-shadow 0.3s ease;
+      background-color: var(--bg-secondary);
+      border: 1px solid rgba(36, 48, 38, 0.10);
+      border-radius: var(--border-radius);
+      overflow: hidden;
+      display: flex;
+      flex-direction: column;
+      box-shadow: 0 22px 70px rgba(36, 48, 38, 0.13);
+      backface-visibility: hidden;
+    }
+
+    .home-catalog-slider .food-image-wrapper {
+      height: 245px;
+    }
+
+    .home-catalog-slider .food-info {
+      padding: 1.45rem 1.55rem 1.55rem;
+    }
+
+    .home-catalog-slider .food-title {
+      font-size: 1.35rem;
+      margin-bottom: 0.65rem;
+    }
+
+    .home-catalog-slider .food-desc {
+      font-size: 0.98rem;
+      line-height: 1.65;
+      -webkit-line-clamp: 3;
+    }
+
+    .home-catalog-slider .food-footer {
+      padding-top: 1rem;
+      border-top: 1px solid var(--border-color);
+    }
+
+    /* Disable card transitions during touch drag for real-time feel */
+    .home-catalog-slider.is-dragging .food-card {
+      transition: opacity 0.15s ease, border-color 0.3s ease, box-shadow 0.3s ease;
+    }
+
+    @media (max-width: 768px) {
+      .home-catalog-slider .food-card {
+        width: 310px;
+        height: 420px;
+        left: calc(50% - 155px);
+      }
+
+      .home-catalog-slider-wrapper {
+        height: 450px;
+      }
+
+      .home-catalog-slider .food-image-wrapper {
+        height: 205px;
+      }
+    }
+    @media (max-width: 480px) {
+      .home-catalog-slider .food-card {
+        width: 285px;
+        height: 410px;
+        left: calc(50% - 142.5px);
+      }
+
+      .home-catalog-slider-wrapper {
+        height: 430px;
+        -webkit-mask-image: none;
+        mask-image: none;
+      }
+    }
+
+    .home-catalog-slider .food-card:hover {
+      border-color: var(--primary);
+      box-shadow: 0 15px 40px var(--primary-glow-strong);
+    }
+
+    /* Slider control buttons */
+    .slider-btn {
+      background-color: rgba(23, 33, 27, 0.88);
+      border: 1px solid rgba(255, 255, 255, 0.24);
+      color: var(--text-on-dark);
+      width: 48px;
+      height: 48px;
+      border-radius: 8px;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      cursor: pointer;
+      position: absolute;
+      z-index: 20;
+      transition: var(--transition);
+      box-shadow: 0 4px 15px rgba(87, 85, 39, 0.2);
+      backdrop-filter: blur(5px);
+      bottom: -18px;
+    }
+
+    .slider-btn:hover {
+      background-color: var(--primary);
+      border-color: var(--primary);
+      color: #fff;
+      box-shadow: 0 0 15px var(--primary-glow-strong);
+    }
+
+    .prev-btn {
+      left: calc(50% - 66px);
+    }
+
+    .next-btn {
+      left: calc(50% + 18px);
+    }
+
+    @media (max-width: 768px) {
+      .prev-btn { left: calc(50% - 54px); }
+      .next-btn { left: calc(50% + 14px); }
+      .slider-btn { width: 36px; height: 36px; font-size: 0.85rem; }
+    }
+    @media (max-width: 480px) {
+      .slider-btn { display: none; }
+    }
+
+    /* Slider dots pagination */
+    .slider-dots {
+      display: flex;
+      justify-content: center;
+      gap: 0.5rem;
+      margin-top: 2.35rem;
+    }
+
+    .slider-dot {
+      width: 10px;
+      height: 10px;
+      border-radius: 50%;
+      background-color: var(--border-color);
+      cursor: pointer;
+      transition: var(--transition);
+    }
+
+    .slider-dot.active {
+      background-color: var(--primary);
+      width: 24px;
+      border-radius: 10px;
+      box-shadow: 0 0 8px var(--primary);
+    }
+
+    @media (max-width: 768px) {
+      .menu-highlights-section {
+        padding: 3.25rem 1rem 3.5rem;
+      }
+    }
+
+    @keyframes slideUp {
+      from { transform: translateY(100px); opacity: 0; }
+      to { transform: translateY(0); opacity: 1; }
+    }
+  </style>
+</head>
+<body>
+
+  <!-- Dynamic Header Injected by app.js -->
+  <header id="main-header"></header>
+
+  <!-- Hero Section -->
+  <section class="hero">
+    <div class="hero-copy">
+      <div class="hero-kicker"><i class="fas fa-bolt"></i> Smart campus dining</div>
+      <h1>Skip the Queue, <br>Order <span>Smartly</span></h1>
+      <p>Browse live cafeteria items, place your order online, receive an instant token, and track preparation from your phone.</p>
+      <div class="hero-actions">
+        <a href="/menu" class="btn btn-primary btn-lg"><i class="fas fa-utensils"></i> Browse Food Menu</a>
+        <a href="/track" class="btn btn-secondary btn-lg"><i class="fas fa-search"></i> Track Order Status</a>
+      </div>
+      <div class="hero-stats">
+        <div>
+          <div class="hero-stat-value">15 min</div>
+          <div class="hero-stat-label">Avg prep</div>
+        </div>
+        <div>
+          <div class="hero-stat-value">Live</div>
+          <div class="hero-stat-label">Token status</div>
+        </div>
+        <div>
+          <div class="hero-stat-value">0 lines</div>
+          <div class="hero-stat-label">At pickup</div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Menu Highlights Carousel Catalog Section -->
+  <section class="container menu-highlights-section">
+    <div class="section-header">
+      <h2>Our Menu Highlights</h2>
+      <p style="color: var(--text-muted); font-size: 1rem;">Explore some of our daily specials and favorites. Order directly from the home page!</p>
+    </div>
+
+    <!-- Catalog Slider Container -->
+    <div class="home-catalog-slider-container">
+      <button class="slider-btn prev-btn" onclick="slideCatalog(-1)" aria-label="Previous dishes"><i class="fas fa-chevron-left"></i></button>
+      
+      <div class="home-catalog-slider-wrapper">
+        <div class="home-catalog-slider" id="home-catalog-container">
+          <!-- Dynamically loaded food items -->
+          <div style="text-align: center; width: 100%; padding: 4rem 2rem; color: var(--text-muted);">
+            <i class="fas fa-spinner fa-spin" style="font-size: 2.2rem; margin-bottom: 1rem; color: var(--primary);"></i>
+            <p>Preparing catalog items...</p>
+          </div>
+        </div>
+      </div>
+      
+      <button class="slider-btn next-btn" onclick="slideCatalog(1)" aria-label="Next dishes"><i class="fas fa-chevron-right"></i></button>
+    </div>
+
+    <!-- Dots Navigation -->
+    <div class="slider-dots" id="slider-dots-container"></div>
+  </section>
+
+  <!-- Features/Benefits Section -->
+  <section class="container" style="margin-bottom: 5rem;">
+    <div class="section-header">
+      <h2>How it Works</h2>
+      <p>Follow three simple steps to get your meals without standing in long queues.</p>
+    </div>
+    
+    <div class="features-grid">
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-mobile-alt"></i>
+        </div>
+        <h3>1. Place Order Online</h3>
+        <p>Browse the daily catalog, search for foods by category, customize items, and place your order using Cash or Online Payment.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-ticket-alt"></i>
+        </div>
+        <h3>2. Get Token Number</h3>
+        <p>Once paid, a unique order token (e.g. T001) is automatically generated. Keep your ticket secure on your screen or dashboard.</p>
+      </div>
+
+      <div class="feature-card">
+        <div class="feature-icon">
+          <i class="fas fa-clock"></i>
+        </div>
+        <h3>3. Track & Pick Up</h3>
+        <p>Monitor your token status on the tracking page or cafeteria display board. Pick up your meal when the status changes to Ready.</p>
+      </div>
+    </div>
+  </section>
+
+  <!-- Extra Cafeteria Information Section -->
+  <section style="background-color: var(--bg-secondary); border-top: 1px solid var(--border-color); border-bottom: 1px solid var(--border-color); padding: 4rem 0;">
+    <div class="container text-center">
+      <div style="max-width: 800px; margin: 0 auto; text-align: center;">
+        <h2 style="font-size: 2rem; margin-bottom: 1.5rem; font-weight: 700;">University Cafeteria Excellence</h2>
+        <p style="color: var(--text-muted); margin-bottom: 2.5rem; font-size: 1.05rem;">We prioritize hygiene, fast service, and fresh ingredients to provide university students and staff with high-quality dining options every day.</p>
+        
+        <!-- Stats Mini Grid -->
+        <div style="display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 2rem;">
+          <div>
+            <div style="font-size: 2.2rem; font-weight: 800; color: var(--primary);">15 Mins</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-top: 0.25rem;">Avg Prep Time</div>
+          </div>
+          <div>
+            <div style="font-size: 2.2rem; font-weight: 800; color: var(--primary);">20+</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-top: 0.25rem;">Daily Dishes</div>
+          </div>
+          <div>
+            <div style="font-size: 2.2rem; font-weight: 800; color: var(--primary);">100%</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-top: 0.25rem;">Hygienic</div>
+          </div>
+          <div>
+            <div style="font-size: 2.2rem; font-weight: 800; color: var(--primary);">500+</div>
+            <div style="color: var(--text-muted); font-size: 0.85rem; text-transform: uppercase; margin-top: 0.25rem;">Happy Diners</div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- Dynamic Footer Injected by app.js -->
+  <footer id="main-footer"></footer>
+
+  <!-- Core App Scripts -->
+  <script src="/js/api.js"></script>
+  <script src="/js/app.js"></script>
+
+  <!-- Homepage Catalog Slider Script -->
+  <script>
+    let currentSlide = 0;
+    let totalItems = 0;
+
+    document.addEventListener('DOMContentLoaded', () => {
+      loadHomeCatalog();
+    });
+
+    async function loadHomeCatalog() {
+      const container = document.getElementById('home-catalog-container');
+      const dotsContainer = document.getElementById('slider-dots-container');
+      
+      try {
+        const items = await API.getMenuItems();
+        container.innerHTML = '';
+        dotsContainer.innerHTML = '';
+        
+        if (items.length === 0) {
+          container.innerHTML = `<div style="text-align: center; width: 100%; color: var(--text-muted); padding: 2rem;">No menu items found.</div>`;
+          return;
+        }
+        
+        totalItems = items.length;
+        
+        items.forEach((item, index) => {
+          const card = document.createElement('div');
+          card.className = 'food-card';
+          
+          const imgSrc = item.image || 'https://images.unsplash.com/photo-1498837167922-ddd27525d352?auto=format&fit=crop&w=500&q=80';
+          const badgeHtml = item.category_name ? `<span class="food-badge">${item.category_name}</span>` : '';
+          const availabilityHtml = !item.availability ? `<span class="food-availability">Sold Out</span>` : '';
+          
+          const disabledAttr = !item.availability ? 'disabled style="background-color: var(--bg-tertiary); cursor: not-allowed; border-color: var(--border-color); color: var(--text-muted);"' : '';
+          const btnText = item.availability ? '<i class="fas fa-plus"></i> Add to Cart' : 'Unavailable';
+          const btnClass = item.availability ? 'btn-primary' : 'btn-secondary';
+          
+          card.innerHTML = `
+            <div class="food-image-wrapper">
+              <img class="food-image" src="${imgSrc}" alt="${item.name}">
+              ${badgeHtml}
+              ${availabilityHtml}
+            </div>
+            <div class="food-info">
+              <h3 class="food-title">${item.name}</h3>
+              <p class="food-desc">${item.description || 'Delicious freshly prepared cafeteria item.'}</p>
+              <div class="food-footer">
+                <span class="food-price">৳${parseFloat(item.price).toFixed(2)}</span>
+                <button class="btn ${btnClass} btn-sm add-cart-btn" data-id="${item.id}" ${disabledAttr}>
+                  ${btnText}
+                </button>
+              </div>
+            </div>
+          `;
+          
+          // Click to slide to center if clicking a side card
+          card.addEventListener('click', (e) => {
+            if (index !== currentSlide && !e.target.closest('.add-cart-btn')) {
+              e.preventDefault();
+              goToSlide(index);
+            }
+          });
+
+          // Add to Cart event binding
+          const addBtn = card.querySelector('.add-cart-btn');
+          if (addBtn && item.availability) {
+            addBtn.addEventListener('click', (e) => {
+              e.stopPropagation(); // Stop click from triggering card slide
+              Cart.add(item, 1);
+              
+              // Visual Toast alert feedback
+              const alertBox = document.createElement('div');
+              alertBox.className = 'alert alert-success';
+              alertBox.style = 'position: fixed; bottom: 20px; right: 20px; z-index: 1000; margin-bottom: 0; box-shadow: var(--card-shadow); animation: slideUp 0.3s ease-out;';
+              alertBox.innerHTML = `<i class="fas fa-shopping-basket"></i> Added ${item.name} to your cart!`;
+              document.body.appendChild(alertBox);
+              
+              setTimeout(() => {
+                alertBox.remove();
+              }, 2500);
+            });
+          }
+          
+          container.appendChild(card);
+        });
+        
+        // Initial slide is the middle one
+        currentSlide = Math.floor(totalItems / 2);
+        
+        updateDots();
+        updateCardTransforms();
+        
+        window.addEventListener('resize', updateCardTransforms);
+        window.addEventListener('resize', updateDots);
+        
+        // ─── Touch Drag & Swipe for Mobile/Tablet ───
+        const sliderWrapper = document.querySelector('.home-catalog-slider-wrapper');
+        const sliderEl = document.getElementById('home-catalog-container');
+        let touchStartX = 0;
+        let touchStartY = 0;
+        let touchCurrentX = 0;
+        let isDragging = false;
+        let dragLocked = false; // true once we decide horizontal vs vertical
+        let isHorizontalDrag = false;
+        let dragStartTime = 0;
+
+        sliderWrapper.addEventListener('touchstart', (e) => {
+          touchStartX = e.touches[0].clientX;
+          touchStartY = e.touches[0].clientY;
+          touchCurrentX = touchStartX;
+          isDragging = true;
+          dragLocked = false;
+          isHorizontalDrag = false;
+          dragStartTime = Date.now();
+        }, { passive: true });
+
+        sliderWrapper.addEventListener('touchmove', (e) => {
+          if (!isDragging) return;
+          const x = e.touches[0].clientX;
+          const y = e.touches[0].clientY;
+          const diffX = x - touchStartX;
+          const diffY = y - touchStartY;
+
+          // Lock direction after a small movement
+          if (!dragLocked && (Math.abs(diffX) > 8 || Math.abs(diffY) > 8)) {
+            dragLocked = true;
+            isHorizontalDrag = Math.abs(diffX) > Math.abs(diffY);
+          }
+
+          if (!dragLocked || !isHorizontalDrag) return;
+
+          // Prevent vertical scroll while swiping horizontally
+          e.preventDefault();
+
+          touchCurrentX = x;
+          sliderEl.classList.add('is-dragging');
+
+          // Apply real-time drag offset to cards
+          const dragOffset = touchCurrentX - touchStartX;
+          applyDragOffset(dragOffset);
+        }, { passive: false });
+
+        sliderWrapper.addEventListener('touchend', (e) => {
+          if (!isDragging) return;
+          isDragging = false;
+          sliderEl.classList.remove('is-dragging');
+
+          if (!isHorizontalDrag) return;
+
+          const dragOffset = touchCurrentX - touchStartX;
+          const elapsed = Date.now() - dragStartTime;
+          const velocity = Math.abs(dragOffset) / Math.max(elapsed, 1); // px/ms
+
+          // Determine slide change: either fast flick (velocity) or large drag (distance)
+          const threshold = window.innerWidth < 480 ? 40 : 60;
+          if (Math.abs(dragOffset) > threshold || velocity > 0.35) {
+            if (dragOffset > 0) {
+              slideCatalog(-1); // Swipe right → previous
+            } else {
+              slideCatalog(1);  // Swipe left  → next
+            }
+          } else {
+            // Snap back to current slide
+            updateCardTransforms();
+          }
+        }, { passive: true });
+
+        sliderWrapper.addEventListener('touchcancel', () => {
+          isDragging = false;
+          sliderEl.classList.remove('is-dragging');
+          updateCardTransforms();
+        }, { passive: true });
+        
+      } catch (error) {
+        console.error('Failed to load home catalog:', error);
+        container.innerHTML = `<div style="text-align: center; width: 100%; color: var(--danger); padding: 2rem;">Failed to load catalog. Please check server connection.</div>`;
+      }
+    }
+
+    /**
+     * Apply a pixel drag offset to cards during touch-move for real-time feedback.
+     */
+    function applyDragOffset(dragPx) {
+      const container = document.getElementById('home-catalog-container');
+      const cards = container.children;
+      if (cards.length === 0) return;
+
+      const width = window.innerWidth;
+      let stepX = 340, stepZ = 90, rotateYVal = 18, activeScale = 1, sideScale = 0.76;
+      if (width < 768) { stepX = 250; stepZ = 70; rotateYVal = 14; activeScale = 1; sideScale = 0.72; }
+      if (width < 480) { stepX = 210; stepZ = 55; rotateYVal = 10; activeScale = 1; sideScale = 0.68; }
+
+      // Convert drag pixels into a fractional slide offset
+      const fractional = -dragPx / (stepX * 1.4);
+      const virtualCenter = currentSlide + fractional;
+
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const offset = i - virtualCenter;
+        const absOffset = Math.abs(offset);
+
+        if (absOffset < 0.01) {
+          card.style.transform = `translateX(0) scale(${activeScale}) translateZ(0) rotateY(0deg)`;
+          card.style.zIndex = 10;
+          card.style.opacity = 1;
+        } else {
+          const direction = offset > 0 ? 1 : -1;
+          const rotation = -direction * rotateYVal * Math.min(absOffset, 1);
+          const translationX = offset * stepX * 0.78;
+          const translationZ = -stepZ * absOffset;
+          const scale = sideScale + (activeScale - sideScale) * Math.max(0, 1 - absOffset);
+
+          card.style.transform = `translateX(${translationX}px) scale(${scale}) translateZ(${translationZ}px) rotateY(${rotation}deg)`;
+          card.style.zIndex = Math.round(10 - absOffset);
+          card.style.opacity = absOffset > 2.2 ? 0 : Math.max(0.12, 1 - absOffset * 0.52);
+        }
+      }
+    }
+
+    function updateCardTransforms() {
+      const container = document.getElementById('home-catalog-container');
+      const cards = container.children;
+      if (cards.length === 0) return;
+
+      const width = window.innerWidth;
+      
+      // Set spacing parameters based on screen size (wider configuration)
+      let stepX = 340;
+      let stepZ = 90; 
+      let rotateYVal = 18;
+      let activeScale = 1;
+      let sideScale = 0.76;
+
+      if (width < 768) {
+        stepX = 250; // Comfortable tablet spacing
+        stepZ = 70;
+        rotateYVal = 14;
+        activeScale = 1;
+        sideScale = 0.72;
+      }
+      if (width < 480) {
+        stepX = 210; // Tablet spacing — room for visible side cards
+        stepZ = 55;
+        rotateYVal = 10;
+        activeScale = 1;
+        sideScale = 0.68;
+      }
+
+      for (let i = 0; i < cards.length; i++) {
+        const card = cards[i];
+        const offset = i - currentSlide;
+        const absOffset = Math.abs(offset);
+
+        if (offset === 0) {
+          // Active card
+          card.style.transform = `translateX(0) scale(${activeScale}) translateZ(0) rotateY(0deg)`;
+          card.style.zIndex = 10;
+          card.style.opacity = 1;
+          card.style.pointerEvents = 'auto';
+        } else {
+          // Side cards (rotated facing the center)
+          const direction = offset > 0 ? 1 : -1;
+          const rotation = -direction * rotateYVal;
+          const translationX = direction * stepX * (1 + (absOffset - 1) * 0.4);
+          const translationZ = -stepZ * absOffset;
+
+          card.style.transform = `translateX(${translationX}px) scale(${sideScale}) translateZ(${translationZ}px) rotateY(${rotation}deg)`;
+          card.style.zIndex = 10 - absOffset;
+          
+          if (absOffset > 2) {
+            card.style.opacity = 0;
+            card.style.pointerEvents = 'none';
+          } else {
+            card.style.opacity = absOffset === 1 ? 0.42 : 0.16;
+            card.style.pointerEvents = 'auto'; // allow click to slide to this card
+          }
+        }
+      }
+    }
+
+    function updateDots() {
+      const dotsContainer = document.getElementById('slider-dots-container');
+      dotsContainer.innerHTML = '';
+      
+      if (totalItems <= 1) return;
+      
+      for (let i = 0; i < totalItems; i++) {
+        const dot = document.createElement('span');
+        dot.className = `slider-dot ${i === currentSlide ? 'active' : ''}`;
+        dot.addEventListener('click', () => {
+          goToSlide(i);
+        });
+        dotsContainer.appendChild(dot);
+      }
+    }
+
+    function goToSlide(slideIndex) {
+      if (slideIndex < 0) slideIndex = 0;
+      if (slideIndex >= totalItems) slideIndex = totalItems - 1;
+      
+      currentSlide = slideIndex;
+      
+      updateCardTransforms();
+      
+      const dots = document.querySelectorAll('.slider-dot');
+      dots.forEach((dot, idx) => {
+        if (idx === currentSlide) {
+          dot.classList.add('active');
+        } else {
+          dot.classList.remove('active');
+        }
+      });
+    }
+
+    function slideCatalog(direction) {
+      goToSlide(currentSlide + direction);
+    }
+  </script>
+</body>
+</html>
