@@ -43,9 +43,15 @@ router.post('/signup', async (req, res) => {
     };
     req.session.user = newUser;
 
-    return res.status(201).json({
-      message: 'Registration successful.',
-      user: newUser
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error('Session save error:', saveErr);
+        return res.status(500).json({ error: 'Session error. Please try again.' });
+      }
+      return res.status(201).json({
+        message: 'Registration successful.',
+        user: newUser
+      });
     });
   } catch (error) {
     console.error('Signup error:', error);
@@ -86,9 +92,17 @@ router.post('/login', async (req, res) => {
     };
     req.session.user = loggedInUser;
 
-    return res.json({
-      message: 'Login successful.',
-      user: loggedInUser
+    // Explicitly save session before sending response to guarantee the cookie
+    // is persisted before the browser follows the redirect
+    req.session.save((saveErr) => {
+      if (saveErr) {
+        console.error('Session save error:', saveErr);
+        return res.status(500).json({ error: 'Session error. Please try again.' });
+      }
+      return res.json({
+        message: 'Login successful.',
+        user: loggedInUser
+      });
     });
   } catch (error) {
     console.error('Login error:', error);

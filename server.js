@@ -21,7 +21,7 @@ app.use(express.urlencoded({ extended: true }));
 app.use(session({
   name: 'sid',
   secret: process.env.SESSION_SECRET || 'super_secret_cafeteria_token_key_12345',
-  resave: false,
+  resave: true,
   saveUninitialized: false,
   cookie: {
     maxAge: 1000 * 60 * 60 * 24, // 24 hours
@@ -76,7 +76,10 @@ const checkAdminViewAccess = (req, res, next) => {
   if (req.session && req.session.user && req.session.user.role === 'admin') {
     return next();
   }
-  return res.redirect('/login?redirect=' + encodeURIComponent(req.originalUrl));
+  // Not authenticated — redirect to login with return path
+  const redirectTo = '/login?redirect=' + encodeURIComponent(req.originalUrl);
+  console.log(`[Admin Guard] Blocked ${req.originalUrl} — no valid admin session. Redirecting to login.`);
+  return res.redirect(redirectTo);
 };
 
 app.get('/admin', checkAdminViewAccess, sendHTML('admin/index.html'));
