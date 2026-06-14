@@ -4,7 +4,7 @@
       "id": 1,
       "full_name": "System Admin",
       "email": "admin@cafeteria.com",
-      "password": "$2a$10$L6IYqTO1fFSMvZu6se5pK.BAhRRxgwxzrU2nmeeTh2S4rYiAkA3BC",
+      "password": "$2a$10$d.coHEMR1QNpIu5cUseA/Oi6WE0ZwWKkJpfSsfooTmOZc4iOf2DL6",
       "role": "admin",
       "created_at": "2026-06-12T08:00:05.632Z"
     },
@@ -12,7 +12,7 @@
       "id": 2,
       "full_name": "John Doe",
       "email": "customer@cafeteria.com",
-      "password": "$2a$10$k7Fj11rpC.qo29ipjg9TYOlcovwtbq9bVoj6ousXtCHpEyZtLkSv2",
+      "password": "$2a$10$S4/avjPl/Hx62.TOjPtua.vV1VYuS3yIAR36Z9XJ.OpHzsddwwyiS",
       "role": "customer",
       "created_at": "2026-06-12T08:00:05.633Z"
     },

@@ -17,15 +17,17 @@ app.use(cors({
 app.use(express.json());
 app.use(express.urlencoded({ extended: true }));
 
-// Session management — cookie-session stores data in a signed cookie,
-// so it works across all serverless instances (Vercel compatible)
+// Session management — cookie-session stores session data inside a signed
+// browser cookie. Works across all Vercel serverless instances because
+// there is no server-side store to lose between cold starts.
 app.use(cookieSession({
   name: 'sid',
   keys: [process.env.SESSION_SECRET || 'super_secret_cafeteria_token_key_12345'],
   maxAge: 1000 * 60 * 60 * 24, // 24 hours
   httpOnly: true,
-  secure: false, // must be false — Vercel terminates SSL at edge, internal is HTTP
-  sameSite: 'lax'
+  secure: false,       // false — Vercel handles HTTPS at edge, internal traffic is HTTP
+  sameSite: 'lax',
+  overwrite: true
 }));
 
 // cookie-session does not have a save() method — shim it so existing

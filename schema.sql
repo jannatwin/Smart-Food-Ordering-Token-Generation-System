@@ -71,8 +71,8 @@ ON DUPLICATE KEY UPDATE `category_name`=VALUES(`category_name`);
 -- Password for admin@cafeteria.com: Caf3Admin@2025!
 -- Password for customer@cafeteria.com: customer123
 INSERT INTO `users` (`id`, `full_name`, `email`, `password`, `role`) VALUES
-(1, 'System Admin', 'admin@cafeteria.com', '$2a$10$L6IYqTO1fFSMvZu6se5pK.BAhRRxgwxzrU2nmeeTh2S4rYiAkA3BC', 'admin'),
-(2, 'John Doe', 'customer@cafeteria.com', '$2a$10$k7Fj11rpC.qo29ipjg9TYOlcovwtbq9bVoj6ousXtCHpEyZtLkSv2', 'customer')
+(1, 'System Admin', 'admin@cafeteria.com',    '$2a$10$d.coHEMR1QNpIu5cUseA/Oi6WE0ZwWKkJpfSsfooTmOZc4iOf2DL6', 'admin'),
+(2, 'John Doe',     'customer@cafeteria.com', '$2a$10$S4/avjPl/Hx62.TOjPtua.vV1VYuS3yIAR36Z9XJ.OpHzsddwwyiS', 'customer')
 ON DUPLICATE KEY UPDATE `email`=VALUES(`email`);
 
 -- Seed Food Items

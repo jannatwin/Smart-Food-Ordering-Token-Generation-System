@@ -155,6 +155,8 @@ Visit **http://localhost:3000**
 | Admin | `admin@cafeteria.com` | `Caf3Admin@2025!` |
 | Customer | `customer@cafeteria.com` | `customer123` |
 
+> **Note:** On the live Vercel demo, newly registered accounts are stored in memory per-instance and will reset on cold starts. Use the default credentials above for reliable access.
+
 ---
 
 ## 📡 API Reference
