@@ -193,7 +193,7 @@ function runFallbackQuery(sql, params = []) {
   // Menu / Categories
   if (s.match(/select \* from categories/i))
     return [data.categories];
-  if (s.match(/select f\.\*.*from food_items f/i) || s.match(/select \* from food_items/i)) {
+  if (s.match(/select.*from food_items/i)) {
     return [data.food_items.map(f => ({ 
       ...f, 
       category_name: (data.categories.find(c => c.id == f.category_id) || {}).category_name || 'Uncategorized' 
