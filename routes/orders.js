@@ -107,7 +107,8 @@ router.get('/my-orders', isAuthenticated, async (req, res) => {
   try {
     // Fetch customer's orders sorted by time
     const [orders] = await db.query(
-      'SELECT * FROM orders WHERE user_id = ? ORDER BY order_time DESC',
+      `SELECT id, user_id, token_number, total_amount, status, order_time
+       FROM orders WHERE user_id = ? ORDER BY order_time DESC`,
       [userId]
     );
 
@@ -138,13 +139,13 @@ router.get('/track/:token', async (req, res) => {
   const token = req.params.token.trim();
 
   try {
-    // Find order
+    // Find order — case-insensitive token match works on both MySQL and PostgreSQL
     const [orders] = await db.query(
       `SELECT o.id, o.user_id, o.token_number, o.total_amount, o.status, o.order_time,
               u.full_name as customer_name
        FROM orders o
        JOIN users u ON o.user_id = u.id
-       WHERE o.token_number = ?`,
+       WHERE UPPER(o.token_number) = UPPER(?)`,
       [token]
     );
 
