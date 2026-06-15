@@ -5,9 +5,6 @@
  *  1. PostgreSQL / Supabase  — when DATABASE_URL env var is set
  *  2. MySQL                  — when DB_HOST / DB_NAME env vars are set (no DATABASE_URL)
  *  3. In-memory JSON fallback — when neither database is reachable
- *
- * All public queries use MySQL-style ? placeholders. This module converts
- * them to PostgreSQL $1/$2/... style automatically when using pg.
  */
 
 const fs   = require('fs');
@@ -83,18 +80,15 @@ function saveStore() {
 // =========================================================================
 // DATABASE INIT
 // =========================================================================
-let dbInitPromise = null; // ensures init runs only once per instance
-
-let dbInitError = null; // store connection error for health check
+let dbInitPromise = null;
 
 async function initDatabase() {
-  // --- Try PostgreSQL / Supabase first (DATABASE_URL takes priority) ---
   if (process.env.DATABASE_URL) {
     try {
       const { Pool } = require('pg');
       pgPool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false }, // required for Supabase
+        ssl: { rejectUnauthorized: false },
         max: 3,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000
@@ -103,16 +97,13 @@ async function initDatabase() {
       console.log('[PostgreSQL] Connected to Supabase/PostgreSQL successfully.');
       client.release();
       dbMode = 'pg';
-      dbInitError = null;
       return;
     } catch (err) {
-      dbInitError = err.message;
       console.warn('[PostgreSQL] Connection failed:', err.message);
       pgPool = null;
     }
   }
 
-  // --- Try MySQL only if no DATABASE_URL and DB_HOST is explicitly set ---
   if (!process.env.DATABASE_URL && process.env.DB_HOST && process.env.DB_HOST !== 'localhost') {
     try {
       const mysql = require('mysql2/promise');
@@ -136,52 +127,32 @@ async function initDatabase() {
     }
   }
 
-  // --- Fallback ---
-  console.warn('================================================================');
   console.warn('[DB] No database reachable. Using in-memory JSON fallback.');
-  console.warn('[DB] Set DATABASE_URL env var for Supabase/PostgreSQL.');
-  console.warn('================================================================');
   dbMode = 'fallback';
   getStore();
 }
 
 function ensureDbInit() {
-  if (!dbInitPromise) {
-    dbInitPromise = initDatabase();
-  }
+  if (!dbInitPromise) dbInitPromise = initDatabase();
   return dbInitPromise;
 }
 
 // =========================================================================
 // QUERY WRAPPER
-// Converts MySQL ? placeholders → PostgreSQL $1,$2,... automatically
-// Returns [rows] for SELECT and [result] for INSERT/UPDATE/DELETE
-// matching the mysql2 destructuring pattern used throughout the routes.
 // =========================================================================
 async function query(sql, params = []) {
-  // Always ensure DB is initialized before running any query
   await ensureDbInit();
+  
   if (dbMode === 'pg') {
-    // Convert ? → $1, $2, ...
     let i = 0;
     const pgSql = sql.replace(/\?/g, () => `$${++i}`);
 
-    // For INSERT ... RETURNING id we need to add RETURNING
-    // We patch the INSERT statements to return the inserted id
-    const patchedSql = pgSql
-      .replace(/INSERT INTO users\s/i,       'INSERT INTO users ')
-      .replace(/INSERT INTO categories\s/i,  'INSERT INTO categories ')
-      .replace(/INSERT INTO food_items\s/i,  'INSERT INTO food_items ')
-      .replace(/INSERT INTO orders\s/i,      'INSERT INTO orders ')
-      .replace(/INSERT INTO order_items\s/i, 'INSERT INTO order_items ');
-
-    const finalSql = /^INSERT/i.test(patchedSql.trim()) && !/RETURNING/i.test(patchedSql)
-      ? patchedSql + ' RETURNING id'
-      : patchedSql;
+    const finalSql = /^INSERT/i.test(pgSql.trim()) && !/RETURNING/i.test(pgSql)
+      ? pgSql + ' RETURNING id'
+      : pgSql;
 
     const result = await pgPool.query(finalSql, params);
 
-    // Normalise to match mysql2 return shape
     if (/^INSERT/i.test(finalSql.trim())) {
       const insertId = result.rows[0] ? result.rows[0].id : null;
       return [{ insertId, affectedRows: result.rowCount }];
@@ -189,7 +160,6 @@ async function query(sql, params = []) {
     if (/^(UPDATE|DELETE)/i.test(finalSql.trim())) {
       return [{ affectedRows: result.rowCount }];
     }
-    // SELECT — return [rows]
     return [result.rows];
   }
 
@@ -197,20 +167,19 @@ async function query(sql, params = []) {
     return await mysqlPool.query(sql, params);
   }
 
-  // Fallback
   return runFallbackQuery(sql, params);
 }
 
 // =========================================================================
-// FALLBACK QUERY ENGINE (in-memory JSON)
+// FALLBACK QUERY ENGINE
 // =========================================================================
 function runFallbackQuery(sql, params = []) {
   const data = getStore();
   const s = sql.replace(/\s+/g, ' ').trim();
 
+  // Auth
   if (s.match(/select \* from users where email\s*=\s*\?/i))
     return [data.users.filter(u => u.email.toLowerCase() === String(params[0]).toLowerCase())];
-
   if (s.match(/insert into users/i)) {
     const [full_name, email, password, role] = params;
     const newId = data.users.length > 0 ? Math.max(...data.users.map(u => u.id)) + 1 : 1;
@@ -218,62 +187,20 @@ function runFallbackQuery(sql, params = []) {
     saveStore();
     return [{ insertId: newId }];
   }
-
   if (s.match(/select \* from users where id\s*=\s*\?/i))
     return [data.users.filter(u => u.id == params[0])];
 
+  // Menu / Categories
   if (s.match(/select \* from categories/i))
     return [data.categories];
-
-  if (s.match(/insert into categories/i)) {
-    const newId = data.categories.length > 0 ? Math.max(...data.categories.map(c => c.id)) + 1 : 1;
-    data.categories.push({ id: newId, category_name: params[0] });
-    saveStore();
-    return [{ insertId: newId }];
+  if (s.match(/select f\.\*.*from food_items f/i) || s.match(/select \* from food_items/i)) {
+    return [data.food_items.map(f => ({ 
+      ...f, 
+      category_name: (data.categories.find(c => c.id == f.category_id) || {}).category_name || 'Uncategorized' 
+    }))];
   }
 
-  if (s.match(/update categories set category_name\s*=\s*\?\s*where id\s*=\s*\?/i)) {
-    const cat = data.categories.find(c => c.id == params[1]);
-    if (cat) cat.category_name = params[0];
-    saveStore();
-    return [{ affectedRows: cat ? 1 : 0 }];
-  }
-
-  if (s.match(/delete from categories where id\s*=\s*\?/i)) {
-    const before = data.categories.length;
-    data.categories = data.categories.filter(c => c.id != params[0]);
-    data.food_items.forEach(f => { if (f.category_id == params[0]) f.category_id = null; });
-    saveStore();
-    return [{ affectedRows: before - data.categories.length }];
-  }
-
-  if (s.match(/select \* from food_items/i) || s.match(/select f\.\*.*from food_items f/i)) {
-    return [data.food_items.map(f => ({ ...f, category_name: (data.categories.find(c => c.id == f.category_id) || {}).category_name || 'Uncategorized' }))];
-  }
-
-  if (s.match(/insert into food_items/i)) {
-    const [name, description, price, image, category_id, availability] = params;
-    const newId = data.food_items.length > 0 ? Math.max(...data.food_items.map(f => f.id)) + 1 : 1;
-    data.food_items.push({ id: newId, name, description, price: parseFloat(price), image, category_id: category_id ? parseInt(category_id) : null, availability: availability ? 1 : 0 });
-    saveStore();
-    return [{ insertId: newId }];
-  }
-
-  if (s.match(/update food_items/i)) {
-    const [name, description, price, image, category_id, availability, id] = params;
-    const food = data.food_items.find(f => f.id == id);
-    if (food) { food.name = name; food.description = description; food.price = parseFloat(price); food.image = image; food.category_id = category_id ? parseInt(category_id) : null; food.availability = availability ? 1 : 0; }
-    saveStore();
-    return [{ affectedRows: food ? 1 : 0 }];
-  }
-
-  if (s.match(/delete from food_items where id\s*=\s*\?/i)) {
-    const before = data.food_items.length;
-    data.food_items = data.food_items.filter(f => f.id != params[0]);
-    saveStore();
-    return [{ affectedRows: before - data.food_items.length }];
-  }
-
+  // Orders / Tracking
   if (s.match(/insert into orders/i)) {
     const [user_id, token_number, total_amount, status] = params;
     const newId = data.orders.length > 0 ? Math.max(...data.orders.map(o => o.id)) + 1 : 1;
@@ -281,7 +208,6 @@ function runFallbackQuery(sql, params = []) {
     saveStore();
     return [{ insertId: newId }];
   }
-
   if (s.match(/insert into order_items/i)) {
     const [order_id, food_id, quantity, subtotal] = params;
     const newId = data.order_items.length > 0 ? Math.max(...data.order_items.map(oi => oi.id)) + 1 : 1;
@@ -289,67 +215,38 @@ function runFallbackQuery(sql, params = []) {
     saveStore();
     return [{ insertId: newId }];
   }
-
   if (s.match(/select token_number from orders order by id desc limit 1/i))
     return [[...data.orders].sort((a, b) => b.id - a.id).slice(0, 1).map(o => ({ token_number: o.token_number }))];
+  
+  // Track order with JOIN
+  if (s.match(/select o\.\*.*from orders o.*join users u/i)) {
+    const token = params[0];
+    const matches = data.orders.filter(o => o.token_number.toUpperCase() === String(token).toUpperCase());
+    return [matches.map(o => ({ ...o, customer_name: (data.users.find(u => u.id == o.user_id) || {}).full_name || 'Unknown' }))];
+  }
 
   if (s.match(/select \* from orders where user_id\s*=\s*\?/i))
     return [data.orders.filter(o => o.user_id == params[0]).sort((a, b) => new Date(b.order_time) - new Date(a.order_time))];
 
-  if (s.match(/select \* from orders where token_number\s*=\s*\?/i))
-    return [data.orders.filter(o => o.token_number.toLowerCase() === String(params[0]).toLowerCase())];
-
-  if (s.match(/select o\.\*, u\.full_name as customer_name from orders o join users u on o\.user_id = u\.id where o\.token_number\s*=\s*\?/i)) {
-    const token = String(params[0] || '').toLowerCase();
-    return [data.orders.filter(o => String(o.token_number).toLowerCase() === token).map(o => {
-      const user = data.users.find(u => u.id == o.user_id);
-      return { ...o, customer_name: user ? user.full_name : 'Unknown' };
+  if (s.match(/select oi\.\*.*from order_items oi/i)) {
+    const orderId = params[0];
+    const items = data.order_items.filter(oi => oi.order_id == orderId);
+    return [items.map(oi => {
+      const food = data.food_items.find(f => f.id == oi.food_id) || {};
+      return { ...oi, name: food.name, price: food.price, image: food.image };
     })];
   }
 
-  if (s.match(/select \* from orders order by/i) || s.match(/select o\.\*.*from orders o/i)) {
-    return [data.orders.map(o => {
-      const user = data.users.find(u => u.id == o.user_id);
-      return { ...o, full_name: user ? user.full_name : 'Unknown', email: user ? user.email : '', customer_name: user ? user.full_name : 'Unknown', customer_email: user ? user.email : '' };
-    }).sort((a, b) => new Date(b.order_time) - new Date(a.order_time))];
+  // Admin Stats
+  if (s.match(/select count\(\*\) as total_orders/i)) {
+    const total = data.orders.length;
+    const pending = data.orders.filter(o => o.status === 'Pending').length;
+    const ready = data.orders.filter(o => o.status === 'Ready').length;
+    const revenue = data.orders.reduce((sum, o) => sum + o.total_amount, 0);
+    return [[{ total_orders: total, pending_orders: pending, ready_orders: ready, total_revenue: revenue }]];
   }
 
-  if (s.match(/select oi\.\*.*from order_items oi/i) || s.match(/select \* from order_items/i)) {
-    return [data.order_items.filter(oi => oi.order_id == params[0]).map(oi => {
-      const food = data.food_items.find(f => f.id == oi.food_id);
-      return { ...oi, name: food ? food.name : 'Unknown', price: food ? food.price : 0, image: food ? food.image : '' };
-    })];
-  }
-
-  if (s.match(/update orders set status\s*=\s*\?\s*where id\s*=\s*\?/i)) {
-    const order = data.orders.find(o => o.id == params[1]);
-    if (order) order.status = params[0];
-    saveStore();
-    return [{ affectedRows: order ? 1 : 0 }];
-  }
-
-  if (s.match(/select count\(\*\) as/i) || s.match(/sum\(total_amount\)/i)) {
-    return [[{
-      total_orders:     data.orders.length,
-      pending_orders:   data.orders.filter(o => o.status === 'Pending').length,
-      preparing_orders: data.orders.filter(o => o.status === 'Preparing').length,
-      ready_orders:     data.orders.filter(o => o.status === 'Ready').length,
-      completed_orders: data.orders.filter(o => o.status === 'Completed').length,
-      total_revenue:    data.orders.reduce((sum, o) => sum + o.total_amount, 0)
-    }]];
-  }
-
-  console.warn('[Fallback DB] Unmatched query:', sql);
   return [[]];
 }
 
-// Start DB init immediately on module load
-ensureDbInit();
-
-module.exports = { 
-  query, 
-  getPool: () => pgPool || mysqlPool, 
-  isFallback: () => dbMode === 'fallback',
-  getDbMode: () => dbMode,
-  getDbError: () => dbInitError
-};
+module.exports = { query, ensureDbInit, get dbMode() { return dbMode; } };

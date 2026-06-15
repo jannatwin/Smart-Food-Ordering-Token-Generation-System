@@ -43,7 +43,7 @@ router.get('/orders', async (req, res) => {
       `SELECT o.id, o.user_id, o.token_number, o.total_amount, o.status, o.order_time,
               u.full_name as customer_name, u.email as customer_email
        FROM orders o
-       JOIN users u ON o.user_id = u.id
+       LEFT JOIN users u ON o.user_id = u.id
        ORDER BY o.order_time DESC`
     );
 
@@ -290,7 +290,7 @@ router.get('/reports/sales', async (req, res) => {
       `SELECT o.id, o.user_id, o.token_number, o.total_amount, o.status, o.order_time,
               u.full_name as customer_name
        FROM orders o
-       JOIN users u ON o.user_id = u.id
+       LEFT JOIN users u ON o.user_id = u.id
        ORDER BY o.order_time DESC`
     );
 

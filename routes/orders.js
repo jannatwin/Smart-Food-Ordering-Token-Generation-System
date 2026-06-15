@@ -144,7 +144,7 @@ router.get('/track/:token', async (req, res) => {
       `SELECT o.id, o.user_id, o.token_number, o.total_amount, o.status, o.order_time,
               u.full_name as customer_name
        FROM orders o
-       JOIN users u ON o.user_id = u.id
+       LEFT JOIN users u ON o.user_id = u.id
        WHERE UPPER(o.token_number) = UPPER(?)`,
       [token]
     );
