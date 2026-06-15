@@ -145,7 +145,7 @@ router.get('/track/:token', async (req, res) => {
               u.full_name as customer_name
        FROM orders o
        LEFT JOIN users u ON o.user_id = u.id
-       WHERE UPPER(o.token_number::text) = UPPER(?::text)`,
+       WHERE UPPER(o.token_number) = UPPER(?)`,
       [token]
     );
 

@@ -15,7 +15,7 @@ router.use(isAdmin);
 router.get('/stats', async (req, res) => {
   try {
     const [statsResult] = await db.query(
-      "SELECT COUNT(*)::integer as total_orders, SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END)::integer as pending_orders, SUM(CASE WHEN status = 'Ready' THEN 1 ELSE 0 END)::integer as ready_orders, COALESCE(SUM(total_amount), 0)::numeric as total_revenue FROM orders"
+      "SELECT COUNT(*) as total_orders, SUM(CASE WHEN status = 'Pending' THEN 1 ELSE 0 END) as pending_orders, SUM(CASE WHEN status = 'Ready' THEN 1 ELSE 0 END) as ready_orders, COALESCE(SUM(total_amount), 0) as total_revenue FROM orders"
     );
 
     const stats = statsResult[0] || {};

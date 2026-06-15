@@ -218,8 +218,18 @@ function runFallbackQuery(sql, params = []) {
   if (s.match(/select token_number from orders order by id desc limit 1/i))
     return [[...data.orders].sort((a, b) => b.id - a.id).slice(0, 1).map(o => ({ token_number: o.token_number }))];
   
-  // Track order with JOIN
-  if (s.match(/select o\.\*.*from orders o.*left join users u/i)) {
+  // Admin: Get all orders with customer info (for admin dashboard)
+  if (s.match(/select o\.id.*from orders o.*left join users u.*order by o\.order_time desc/i)) {
+    const orders = data.orders.map(o => ({
+      ...o,
+      customer_name: (data.users.find(u => u.id == o.user_id) || {}).full_name || 'Unknown',
+      customer_email: (data.users.find(u => u.id == o.user_id) || {}).email || 'Unknown'
+    })).sort((a, b) => new Date(b.order_time) - new Date(a.order_time));
+    return [orders];
+  }
+
+  // Track order with JOIN (for live status tracking)
+  if (s.match(/select o\.id.*from orders o.*left join users u.*where upper/i)) {
     const token = params[0];
     const matches = data.orders.filter(o => o.token_number.toUpperCase() === String(token).toUpperCase());
     return [matches.map(o => ({ ...o, customer_name: (data.users.find(u => u.id == o.user_id) || {}).full_name || 'Unknown' }))];
@@ -228,7 +238,7 @@ function runFallbackQuery(sql, params = []) {
   if (s.match(/select \* from orders where user_id\s*=\s*\?/i))
     return [data.orders.filter(o => o.user_id == params[0]).sort((a, b) => new Date(b.order_time) - new Date(a.order_time))];
 
-  if (s.match(/select oi\.\*.*from order_items oi/i)) {
+  if (s.match(/select oi\.id.*from order_items oi.*join food_items f/i)) {
     const orderId = params[0];
     const items = data.order_items.filter(oi => oi.order_id == orderId);
     return [items.map(oi => {
@@ -246,7 +256,28 @@ function runFallbackQuery(sql, params = []) {
     return [[{ total_orders: total, pending_orders: pending, ready_orders: ready, total_revenue: revenue }]];
   }
 
+  // Admin: Update order status
+  if (s.match(/update orders set status\s*=\s*\? where id\s*=\s*\?/i)) {
+    const [status, orderId] = params;
+    const order = data.orders.find(o => o.id == orderId);
+    if (order) {
+      order.status = status;
+      saveStore();
+      return [{ affectedRows: 1 }];
+    }
+    return [{ affectedRows: 0 }];
+  }
+
   return [[]];
 }
 
-module.exports = { query, ensureDbInit, get dbMode() { return dbMode; } };
+// =========================================================================
+// EXPORTS
+// =========================================================================
+module.exports = { 
+  query, 
+  ensureDbInit, 
+  getDbMode: () => dbMode,
+  isFallback: () => dbMode === 'fallback',
+  getDbError: () => null
+};
