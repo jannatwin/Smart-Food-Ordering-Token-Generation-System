@@ -68,6 +68,8 @@ app.get('/api/health', (req, res) => {
     dbMode: db.getDbMode(),
     isFallback: db.isFallback(),
     hasDatabase: !!process.env.DATABASE_URL,
+    dbError: db.getDbError() || null,
+    dbUrlPrefix: process.env.DATABASE_URL ? process.env.DATABASE_URL.substring(0, 30) + '...' : 'NOT SET',
     timestamp: new Date().toISOString()
   });
 });

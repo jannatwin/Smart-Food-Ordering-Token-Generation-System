@@ -85,6 +85,8 @@ function saveStore() {
 // =========================================================================
 let dbInitPromise = null; // ensures init runs only once per instance
 
+let dbInitError = null; // store connection error for health check
+
 async function initDatabase() {
   // --- Try PostgreSQL / Supabase first (DATABASE_URL takes priority) ---
   if (process.env.DATABASE_URL) {
@@ -93,7 +95,7 @@ async function initDatabase() {
       pgPool = new Pool({
         connectionString: process.env.DATABASE_URL,
         ssl: { rejectUnauthorized: false }, // required for Supabase
-        max: 3,              // keep pool small for serverless
+        max: 3,
         idleTimeoutMillis: 30000,
         connectionTimeoutMillis: 5000
       });
@@ -101,8 +103,10 @@ async function initDatabase() {
       console.log('[PostgreSQL] Connected to Supabase/PostgreSQL successfully.');
       client.release();
       dbMode = 'pg';
+      dbInitError = null;
       return;
     } catch (err) {
+      dbInitError = err.message;
       console.warn('[PostgreSQL] Connection failed:', err.message);
       pgPool = null;
     }
@@ -346,5 +350,6 @@ module.exports = {
   query, 
   getPool: () => pgPool || mysqlPool, 
   isFallback: () => dbMode === 'fallback',
-  getDbMode: () => dbMode
+  getDbMode: () => dbMode,
+  getDbError: () => dbInitError
 };
