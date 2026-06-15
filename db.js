@@ -219,7 +219,7 @@ function runFallbackQuery(sql, params = []) {
     return [[...data.orders].sort((a, b) => b.id - a.id).slice(0, 1).map(o => ({ token_number: o.token_number }))];
   
   // Track order with JOIN
-  if (s.match(/select o\.\*.*from orders o.*join users u/i)) {
+  if (s.match(/select o\.\*.*from orders o.*left join users u/i)) {
     const token = params[0];
     const matches = data.orders.filter(o => o.token_number.toUpperCase() === String(token).toUpperCase());
     return [matches.map(o => ({ ...o, customer_name: (data.users.find(u => u.id == o.user_id) || {}).full_name || 'Unknown' }))];
