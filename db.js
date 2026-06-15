@@ -83,14 +83,19 @@ function saveStore() {
 // =========================================================================
 // DATABASE INIT
 // =========================================================================
+let dbInitPromise = null; // ensures init runs only once per instance
+
 async function initDatabase() {
-  // --- Try PostgreSQL / Supabase first ---
+  // --- Try PostgreSQL / Supabase first (DATABASE_URL takes priority) ---
   if (process.env.DATABASE_URL) {
     try {
       const { Pool } = require('pg');
       pgPool = new Pool({
         connectionString: process.env.DATABASE_URL,
-        ssl: { rejectUnauthorized: false } // required for Supabase / hosted PG
+        ssl: { rejectUnauthorized: false }, // required for Supabase
+        max: 3,              // keep pool small for serverless
+        idleTimeoutMillis: 30000,
+        connectionTimeoutMillis: 5000
       });
       const client = await pgPool.connect();
       console.log('[PostgreSQL] Connected to Supabase/PostgreSQL successfully.');
@@ -103,8 +108,8 @@ async function initDatabase() {
     }
   }
 
-  // --- Try MySQL ---
-  if (process.env.DB_HOST) {
+  // --- Try MySQL only if no DATABASE_URL and DB_HOST is explicitly set ---
+  if (!process.env.DATABASE_URL && process.env.DB_HOST && process.env.DB_HOST !== 'localhost') {
     try {
       const mysql = require('mysql2/promise');
       mysqlPool = mysql.createPool({
@@ -113,7 +118,7 @@ async function initDatabase() {
         password:         process.env.DB_PASSWORD || '',
         database:         process.env.DB_NAME     || 'smart_cafeteria',
         waitForConnections: true,
-        connectionLimit:  10,
+        connectionLimit:  5,
         queueLimit:       0
       });
       const conn = await mysqlPool.getConnection();
@@ -130,10 +135,17 @@ async function initDatabase() {
   // --- Fallback ---
   console.warn('================================================================');
   console.warn('[DB] No database reachable. Using in-memory JSON fallback.');
-  console.warn('[DB] Set DATABASE_URL for Supabase/PostgreSQL persistence.');
+  console.warn('[DB] Set DATABASE_URL env var for Supabase/PostgreSQL.');
   console.warn('================================================================');
   dbMode = 'fallback';
   getStore();
+}
+
+function ensureDbInit() {
+  if (!dbInitPromise) {
+    dbInitPromise = initDatabase();
+  }
+  return dbInitPromise;
 }
 
 // =========================================================================
@@ -143,6 +155,8 @@ async function initDatabase() {
 // matching the mysql2 destructuring pattern used throughout the routes.
 // =========================================================================
 async function query(sql, params = []) {
+  // Always ensure DB is initialized before running any query
+  await ensureDbInit();
   if (dbMode === 'pg') {
     // Convert ? → $1, $2, ...
     let i = 0;
@@ -325,6 +339,12 @@ function runFallbackQuery(sql, params = []) {
   return [[]];
 }
 
-initDatabase();
+// Start DB init immediately on module load
+ensureDbInit();
 
-module.exports = { query, getPool: () => pgPool || mysqlPool, isFallback: () => dbMode === 'fallback' };
+module.exports = { 
+  query, 
+  getPool: () => pgPool || mysqlPool, 
+  isFallback: () => dbMode === 'fallback',
+  getDbMode: () => dbMode
+};

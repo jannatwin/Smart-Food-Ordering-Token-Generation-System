@@ -60,6 +60,18 @@ app.use('/api/menu', menuRoutes);
 app.use('/api/orders', orderRoutes);
 app.use('/api/admin', adminRoutes);
 
+// Health check — shows DB mode for debugging
+app.get('/api/health', (req, res) => {
+  const db = require('./db');
+  res.json({
+    status: 'ok',
+    dbMode: db.getDbMode(),
+    isFallback: db.isFallback(),
+    hasDatabase: !!process.env.DATABASE_URL,
+    timestamp: new Date().toISOString()
+  });
+});
+
 // Helper for static file mapping (serving clean URLs)
 const sendHTML = (filename) => {
   return (req, res) => {
