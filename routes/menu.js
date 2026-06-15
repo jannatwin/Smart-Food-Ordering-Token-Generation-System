@@ -22,7 +22,7 @@ router.get('/items', async (req, res) => {
   try {
     // Basic join query. Fallback DB mimics this structure.
     const [items] = await db.query(
-      'SELECT f.*, c.category_name FROM food_items f LEFT JOIN categories c ON f.category_id = c.id WHERE f.availability = true OR f.availability::integer = 1'
+      'SELECT f.*, c.category_name FROM food_items f LEFT JOIN categories c ON f.category_id = c.id WHERE f.availability = 1 OR f.availability = true'
     );
 
     let filteredItems = items;

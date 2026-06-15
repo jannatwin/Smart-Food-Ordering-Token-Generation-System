@@ -268,6 +268,81 @@ function runFallbackQuery(sql, params = []) {
     return [{ affectedRows: 0 }];
   }
 
+  // Food Items Management
+  if (s.match(/insert into food_items/i)) {
+    const [name, description, price, image, category_id, availability] = params;
+    const newId = data.food_items.length > 0 ? Math.max(...data.food_items.map(f => f.id)) + 1 : 1;
+    data.food_items.push({ 
+      id: newId, 
+      name, 
+      description, 
+      price: parseFloat(price), 
+      image, 
+      category_id: parseInt(category_id), 
+      availability: parseInt(availability) 
+    });
+    saveStore();
+    return [{ insertId: newId }];
+  }
+
+  if (s.match(/update food_items set.*where id\s*=\s*\?/i)) {
+    const [name, description, price, image, category_id, availability, foodId] = params;
+    const food = data.food_items.find(f => f.id == foodId);
+    if (food) {
+      food.name = name;
+      food.description = description;
+      food.price = parseFloat(price);
+      food.image = image;
+      food.category_id = parseInt(category_id);
+      food.availability = parseInt(availability);
+      saveStore();
+      return [{ affectedRows: 1 }];
+    }
+    return [{ affectedRows: 0 }];
+  }
+
+  if (s.match(/delete from food_items where id\s*=\s*\?/i)) {
+    const foodId = params[0];
+    const initialLen = data.food_items.length;
+    data.food_items = data.food_items.filter(f => f.id != foodId);
+    if (data.food_items.length < initialLen) {
+      saveStore();
+      return [{ affectedRows: 1 }];
+    }
+    return [{ affectedRows: 0 }];
+  }
+
+  // Category Management
+  if (s.match(/insert into categories/i)) {
+    const [category_name] = params;
+    const newId = data.categories.length > 0 ? Math.max(...data.categories.map(c => c.id)) + 1 : 1;
+    data.categories.push({ id: newId, category_name });
+    saveStore();
+    return [{ insertId: newId }];
+  }
+
+  if (s.match(/update categories set category_name\s*=\s*\? where id\s*=\s*\?/i)) {
+    const [category_name, catId] = params;
+    const category = data.categories.find(c => c.id == catId);
+    if (category) {
+      category.category_name = category_name;
+      saveStore();
+      return [{ affectedRows: 1 }];
+    }
+    return [{ affectedRows: 0 }];
+  }
+
+  if (s.match(/delete from categories where id\s*=\s*\?/i)) {
+    const catId = params[0];
+    const initialLen = data.categories.length;
+    data.categories = data.categories.filter(c => c.id != catId);
+    if (data.categories.length < initialLen) {
+      saveStore();
+      return [{ affectedRows: 1 }];
+    }
+    return [{ affectedRows: 0 }];
+  }
+
   return [[]];
 }
 
